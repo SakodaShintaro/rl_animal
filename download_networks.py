@@ -1,28 +1,36 @@
+import re
 import requests
 import os
 import zipfile
 
 
-def download_file_from_google_drive(id, destination):
-    URL = "https://docs.google.com/uc?export=download"
+'''
+Google Drive no longer serves large files through docs.google.com/uc with a
+download_warning cookie. It answers with an HTML confirmation form instead,
+which has to be resubmitted to drive.usercontent.google.com.
+'''
+DOWNLOAD_URL = "https://drive.usercontent.google.com/download"
 
+
+def download_file_from_google_drive(id, destination):
     session = requests.Session()
 
-    response = session.get(URL, params = { 'id' : id }, stream = True)
-    token = get_confirm_token(response)
+    params = {'id': id, 'export': 'download', 'confirm': 't'}
+    response = session.get(DOWNLOAD_URL, params=params, stream=True)
 
-    if token:
-        params = { 'id' : id, 'confirm' : token }
-        response = session.get(URL, params = params, stream = True)
+    if is_html_response(response):
+        response = session.get(DOWNLOAD_URL, params=parse_form_fields(response.text), stream=True)
 
-    save_response_content(response, destination)    
+    save_response_content(response, destination)
 
-def get_confirm_token(response):
-    for key, value in response.cookies.items():
-        if key.startswith('download_warning'):
-            return value
+def is_html_response(response):
+    if 'Content-Type' not in response.headers:
+        return False
 
-    return None
+    return response.headers['Content-Type'].startswith('text/html')
+
+def parse_form_fields(html):
+    return dict(re.findall(r'name="([^"]+)"\s+value="([^"]*)"', html))
 
 def save_response_content(response, destination):
     CHUNK_SIZE = 32768

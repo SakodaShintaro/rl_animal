@@ -7,8 +7,13 @@ Directory with test levels,
 For first submitted network with score 42.66 I used stage3
 For second I used stage3 and than stage4
 '''
-BASE_DIR = '/home/trrrrr/Documents/github/ml/animal_master/rl_animal'
-LEARNING_DIR =  BASE_DIR + '/configs/learning/competition_configurations/'
+BASE_DIR = '/workspace'
+'''
+The original value was '/configs/learning/competition_configurations/', but that
+directory is not part of this repository. stage3 is the set of levels the author
+used for the first submission (score 42.66).
+'''
+LEARNING_DIR =  BASE_DIR + '/configs/learning/stage3/'
 
 '''
 Minimum and maximum steps in enviroment 
