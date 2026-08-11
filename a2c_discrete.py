@@ -50,7 +50,7 @@ class A2CAgent:
         self.grad_norm = config['GRAD_NORM']
         self.gamma = self.config['GAMMA']
         self.lam = self.config['LAMBDA']
-        self.dones = np.asarray([False]*self.num_actors, dtype=np.bool)
+        self.dones = np.asarray([False]*self.num_actors, dtype=bool)
         self.current_rewards = np.asarray([0]*self.num_actors, dtype=np.float32)  
         self.game_rewards = deque([], maxlen=1000)
         self.obs_ph = tf.placeholder('uint8', (None, ) + self.state_shape, name = 'obs')
@@ -214,7 +214,7 @@ class A2CAgent:
         mb_actions = np.asarray(mb_actions, dtype=np.float32)
         mb_values = np.asarray(mb_values, dtype=np.float32)
         mb_neglogpacs = np.asarray(mb_neglogpacs, dtype=np.float32)
-        mb_dones = np.asarray(mb_dones, dtype=np.bool)
+        mb_dones = np.asarray(mb_dones, dtype=bool)
         mb_states = np.asarray(mb_states, dtype=np.float32)
         last_values = self.get_values(self.obs)
         last_values = np.squeeze(last_values)

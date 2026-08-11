@@ -201,7 +201,7 @@ def evaluate(envs, player, tasks, writer, log_every):
     reward = [0.0] * num_envs
     steps = [0] * num_envs
     active = [False] * num_envs
-    resets = np.ones(num_envs, dtype=np.bool)
+    resets = np.ones(num_envs, dtype=bool)
     obs0, obs1 = [None] * num_envs, [None] * num_envs
     rows = []
     total_steps = 0
@@ -224,7 +224,7 @@ def evaluate(envs, player, tasks, writer, log_every):
     while any(active):
         running = [i for i in range(num_envs) if active[i]]
         actions = player.act([np.asarray(obs0), np.asarray(obs1)], resets)
-        resets = np.zeros(num_envs, dtype=np.bool)
+        resets = np.zeros(num_envs, dtype=bool)
 
         for index, result in zip(running, envs.step(running, actions)):
             observation, r, done, _ = result

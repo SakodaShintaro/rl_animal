@@ -27,6 +27,20 @@ services:
     tty: true
     command: ["bash"]
 
+  # RTX 3090 (Ampere) 用: docker compose run --rm animal-ampere
+  animal-ampere:
+    <<: *animal
+    image: rl-animal:tf1.15-ampere
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ampere
+      args:
+        USER_ID: "${USER_ID:-1000}"
+        GROUP_ID: "${GROUP_ID:-1000}"
+    stdin_open: true
+    tty: true
+    command: ["bash"]
+
   # Notebooks (Player.ipynb / Validation.ipynb / test_a2c.ipynb):
   #   docker compose up jupyter  ->  http://localhost:8888
   jupyter:

@@ -66,7 +66,7 @@ class RayVecEnv(IVecEnv):
             newdones.append(cdones)
             newinfos.append(cinfos)
 
-        return [np.asarray(newobs0), newobs1], np.asarray(newrewards), np.asarray(newdones, dtype=np.bool), np.asarray(newinfos)
+        return [np.asarray(newobs0), newobs1], np.asarray(newrewards), np.asarray(newdones, dtype=bool), np.asarray(newinfos)
 
     def reset(self):
         obs = [worker.reset.remote() for worker in self.workers]
@@ -104,7 +104,7 @@ class RayVecEnv2(IVecEnv):
             newdones.append(cdones)
             newinfos.append(cinfos)
 
-        return [np.asarray(newobs0), newobs1], np.asarray(newrewards).flatten(), np.asarray(newdones, dtype=np.bool).flatten(), np.asarray(newinfos)
+        return [np.asarray(newobs0), newobs1], np.asarray(newrewards).flatten(), np.asarray(newdones, dtype=bool).flatten(), np.asarray(newinfos)
 
     def reset(self):
         obs = [worker.reset.remote() for worker in self.workers]

@@ -234,4 +234,4 @@ class AnimalWrapper(gym.Wrapper):
         if shape[0] == 1:
             ob0 = np.squeeze(ob0, axis = 0)
 
-        return [ ob0, np.asarray(ob[1], dtype=np.float32)/hps.VEC_SCALE], np.asarray(reward), np.asarray(done, dtype=np.bool), np.asarray(info)
+        return [ ob0, np.asarray(ob[1], dtype=np.float32)/hps.VEC_SCALE], np.asarray(reward), np.asarray(done, dtype=bool), np.asarray(info)
