@@ -19,7 +19,7 @@ uv run train --env-path /path/to/animalAI.x86_64
 ```bash
 uv run evaluate \
     --env-path /path/to/animalAI.x86_64 \
-    --checkpoint nn/20260812-213000_best.pt \
+    --checkpoint results/20260812-213000/best.pt \
     --output results.csv
 ```
 
