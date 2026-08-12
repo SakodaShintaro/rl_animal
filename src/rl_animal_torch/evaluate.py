@@ -1,8 +1,7 @@
 """Score a checkpoint on the Animal-AI Olympics competition scenarios, in PyTorch only.
 
     uv run evaluate --env-path /path/to/animalAI.x86_64 \
-        --configs /path/to/animal-ai/configs/competition \
-        --checkpoint nn/v4_torch_best.pt \
+        --checkpoint nn/20260812-213000_best.pt \
         --output results.csv
 
 Each scenario carries a pass_mark and is passed when the episode's total environment
@@ -32,7 +31,8 @@ from rl_animal_torch.network import AnimalAgent
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--env-path', required=True, help='v4 animalAI.x86_64')
-    parser.add_argument('--configs', required=True, help='directory of scenario yaml files')
+    parser.add_argument('--configs', default='configs/learning/competition_configurations',
+                        help='directory of scenario yaml files')
     parser.add_argument('--checkpoint', required=True,
                         help='a checkpoint written by train')
     parser.add_argument('--output', required=True, help='csv to write')
@@ -72,12 +72,13 @@ def build_tasks(paths, episodes, num_envs):
 
 def report(rows):
     passed = [row['passed'] for row in rows]
-    print('pass rate: %.4f (%d / %d episodes)' % (np.mean(passed), sum(passed), len(rows)))
-    print('mean reward: %.4f' % np.mean([row['reward'] for row in rows]))
+    mean_reward = np.mean([row['reward'] for row in rows])
+    print(f'pass rate: {np.mean(passed):.4f} ({sum(passed)} / {len(rows)} episodes)')
+    print(f'mean reward: {mean_reward:.4f}')
     for category in sorted({row['category'] for row in rows}, key=int):
         in_category = [row['passed'] for row in rows if row['category'] == category]
-        print('  category %-3s pass rate %.3f (%d episodes)'
-              % (category, np.mean(in_category), len(in_category)))
+        print(f'  category {category:<3} pass rate {np.mean(in_category):.3f} '
+              f'({len(in_category)} episodes)')
 
 
 @torch.no_grad()
@@ -152,9 +153,10 @@ def evaluate(envs, agent, tasks, writer, config, device, log_every):
 
             if len(rows) % log_every == 0:
                 elapsed = time.time() - start
-                print('%d episodes, %.0f steps/s, %.1f min elapsed, pass rate so far %.3f'
-                      % (len(rows), total_steps / elapsed, elapsed / 60.0,
-                         np.mean([entry['passed'] for entry in rows])), flush=True)
+                rate = np.mean([entry['passed'] for entry in rows])
+                print(f'{len(rows)} episodes, {total_steps / elapsed:.0f} steps/s, '
+                      f'{elapsed / 60.0:.1f} min elapsed, pass rate so far {rate:.3f}',
+                      flush=True)
 
     return rows
 
@@ -164,8 +166,8 @@ def main():
     config = EnvConfig()
 
     paths = arena.collect(args.configs, refuse_broken_colors=False)[::args.stride]
-    print('scenarios: %d, episodes each: %d, envs: %d'
-          % (len(paths), args.episodes, args.num_envs))
+    print(f'scenarios: {len(paths)}, episodes each: {args.episodes}, '
+          f'envs: {args.num_envs}')
 
     device = torch.device(args.device)
     agent = load_agent(args.checkpoint, device)

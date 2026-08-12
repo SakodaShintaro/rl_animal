@@ -30,9 +30,9 @@ def format_duration(seconds):
     minutes, seconds = divmod(remainder, 60)
     if hours >= 24:
         days, hours = divmod(hours, 24)
-        return '%dd %d:%02d:%02d' % (days, hours, minutes, seconds)
+        return f'{days}d {hours}:{minutes:02d}:{seconds:02d}'
 
-    return '%d:%02d:%02d' % (hours, minutes, seconds)
+    return f'{hours}:{minutes:02d}:{seconds:02d}'
 
 
 def swap_and_flatten(array):
@@ -75,8 +75,8 @@ class PPOTrainer:
         self.batch_size = config.steps_num * config.num_actors
         self.num_minibatches = self.batch_size // config.minibatch_size
         assert self.num_minibatches > 0, (
-            'minibatch_size %d exceeds the batch of %d steps'
-            % (config.minibatch_size, self.batch_size))
+            f'minibatch_size {config.minibatch_size} exceeds the batch of '
+            f'{self.batch_size} steps')
         assert config.minibatch_size % config.seq_len == 0
 
         self.state = self.agent.initial_state(config.num_actors, device=device)
@@ -292,15 +292,16 @@ class PPOTrainer:
             for name, value in losses.items():
                 values['losses/' + name] = value
 
-            report = ('epoch %d/%d  frame %d  %.0f steps/s  elapsed %s  eta %s  '
-                      'actor %.4f  critic %.4f  entropy %.4f'
-                      % (self.epoch, config.max_epochs, self.frame, steps_per_second,
-                         format_duration(elapsed), format_duration(remaining),
-                         losses['actor'], losses['critic'], losses['entropy']))
+            report = (f'epoch {self.epoch}/{config.max_epochs}  frame {self.frame}  '
+                      f'{steps_per_second:.0f} steps/s  '
+                      f'elapsed {format_duration(elapsed)}  '
+                      f'eta {format_duration(remaining)}  '
+                      f'actor {losses["actor"]:.4f}  critic {losses["critic"]:.4f}  '
+                      f'entropy {losses["entropy"]:.4f}')
             if len(self.episode_rewards) > 0:
                 mean_reward = float(np.mean(self.episode_rewards))
                 values['mean_reward'] = mean_reward
-                report += '  mean reward %.4f' % mean_reward
+                report += f'  mean reward {mean_reward:.4f}'
                 if mean_reward > best_reward:
                     best_reward = mean_reward
                     self.save(best_checkpoint_path)

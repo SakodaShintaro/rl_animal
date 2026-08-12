@@ -27,6 +27,7 @@ def worker_main(connection, env_path, arena_paths, worker_id, base_port, seed, c
         connection.send(env.reset())
         while True:
             command, payload = connection.recv()
+            assert command in ('step', 'reset', 'close'), f'unknown command {command}'
             if command == 'step':
                 observation, reward, done = env.step(payload)
                 if done:
@@ -36,8 +37,6 @@ def worker_main(connection, env_path, arena_paths, worker_id, base_port, seed, c
                 connection.send(env.reset())
             elif command == 'close':
                 return
-            else:
-                raise ValueError('unknown command ' + command)
     finally:
         env.close()
         for name in os.listdir(scratch_dir):

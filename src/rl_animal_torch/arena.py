@@ -50,8 +50,7 @@ TIME_PATTERN = re.compile(r'^[ \t]*t:[ \t]*([\d.]+)', re.M)
 
 def read_arena_time(raw):
     match = TIME_PATTERN.search(raw)
-    if match is None:
-        raise ValueError('no t: field in the arena config')
+    assert match is not None, 'no t: field in the arena config'
 
     return int(float(match.group(1)))
 
@@ -135,19 +134,17 @@ def broken_colors(raw):
 
 def validate(raw, path):
     unknown = sorted(set(NAME_PATTERN.findall(raw)) - SPAWNABLE_NAMES)
-    if len(unknown) > 0:
-        raise ValueError('%s uses item names the v4 build does not have: %s. It would '
-                         'hang the player rather than report an error.'
-                         % (path, ', '.join(unknown)))
+    assert len(unknown) == 0, (
+        f'{path} uses item names the v4 build does not have: {", ".join(unknown)}. It would '
+        f'hang the player rather than report an error.')
 
-    lines = raw.split('\n')
-    for block in item_blocks(lines):
+    for block in item_blocks(raw.split('\n')):
         is_agent = any(AGENT_PATTERN.match(line) for line in block)
         has_positions = any(POSITIONS_PATTERN.match(line) for line in block)
-        if is_agent and not has_positions:
-            raise ValueError('%s has an Agent with no positions. The v4 build indexes '
-                             'positions[0] unconditionally and hangs; give it '
-                             '!Vector3 {x: -1, y: 0, z: -1} to keep it random.' % path)
+        assert not (is_agent and not has_positions), (
+            f'{path} has an Agent with no positions. The v4 build indexes positions[0] '
+            f'unconditionally and hangs; give it !Vector3 {{x: -1, y: 0, z: -1}} to keep it '
+            f'random.')
 
 
 def write_with_time(raw, arena_time, directory):
@@ -155,7 +152,7 @@ def write_with_time(raw, arena_time, directory):
     v4 reads the arena as text, so a randomized episode length has to be written out as a
     file rather than set on a parsed config object the way the v1 training did.
     '''
-    patched = re.sub(r'^([ \t]*)t:[ \t]*[\d.]+', r'\g<1>t: %d' % arena_time, raw,
+    patched = re.sub(r'^([ \t]*)t:[ \t]*[\d.]+', rf'\g<1>t: {arena_time}', raw,
                      count=1, flags=re.M)
     handle, path = tempfile.mkstemp(suffix='.yaml', dir=directory)
     with os.fdopen(handle, 'w') as out_file:
@@ -175,8 +172,7 @@ def collect(directory, refuse_broken_colors):
     '''
     paths = sorted(os.path.join(directory, name) for name in os.listdir(directory)
                    if name.endswith('.yml') or name.endswith('.yaml'))
-    if len(paths) == 0:
-        raise ValueError('no arena files in ' + directory)
+    assert len(paths) > 0, f'no arena files in {directory}'
 
     broken = []
     for path in paths:
@@ -186,15 +182,12 @@ def collect(directory, refuse_broken_colors):
         if len(keys) > 0:
             broken.append((path, keys))
 
+    names = ', '.join(os.path.basename(path) for path, _ in broken)
+    assert not (refuse_broken_colors and len(broken) > 0), (
+        f'{names} write a color list with no value, which deserializes to null and kills the '
+        f'v4 player inside initVec3sFromRGBs; delete the key.')
     if len(broken) > 0:
-        if refuse_broken_colors:
-            path, keys = broken[0]
-            raise ValueError('%s writes %s with no value, which deserializes to null and '
-                             'kills the v4 player inside initVec3sFromRGBs; delete the key. '
-                             '%d file(s) in this directory do it.'
-                             % (path, ', '.join(keys), len(broken)))
-        print('warning: %d arena(s) write a color list with no value, so the v4 player '
-              'builds them wrong: %s'
-              % (len(broken), ', '.join(os.path.basename(path) for path, _ in broken)))
+        print(f'warning: {len(broken)} arena(s) write a color list with no value, so the v4 '
+              f'player builds them wrong: {names}')
 
     return paths

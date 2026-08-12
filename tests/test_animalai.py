@@ -38,7 +38,7 @@ def env_path():
         pytest.skip('set AAI4_ENV_PATH to the v4 animalAI.x86_64 to run this')
     path = os.environ['AAI4_ENV_PATH']
     if not os.path.exists(path):
-        pytest.skip('%s does not exist' % path)
+        pytest.skip(f'{path} does not exist')
     return path
 
 

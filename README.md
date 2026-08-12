@@ -11,15 +11,12 @@ uv sync
 ## Train
 
 ```bash
-uv run train \
-    --env-path /path/to/animalAI.x86_64 \
-    --arenas configs/learning/stage3 \
-    --run-name v4_torch
+uv run train --env-path /path/to/animalAI.x86_64
 ```
 
 The default configuration is the winning run's: 24 actors, 256 steps each, 11400 epochs, or
-70 million steps. Checkpoints go to `nn/<run-name>.pt` every epoch and
-`nn/<run-name>_best.pt` whenever the mean episode reward improves. Metrics go to wandb;
+70 million steps. The run is named after the time it started; checkpoints go to `nn/<run>.pt` every epoch and
+`nn/<run>_best.pt` whenever the mean episode reward improves. Metrics go to wandb;
 `--wandb-mode offline` keeps them local, `disabled` drops them.
 
 ## Evaluate
@@ -27,8 +24,7 @@ The default configuration is the winning run's: 24 actors, 256 steps each, 11400
 ```bash
 uv run evaluate \
     --env-path /path/to/animalAI.x86_64 \
-    --configs configs/learning/competition_configurations \
-    --checkpoint nn/v4_torch_best.pt \
+    --checkpoint nn/20260812-213000_best.pt \
     --output results.csv
 ```
 

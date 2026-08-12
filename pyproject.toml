@@ -10,7 +10,11 @@ dependencies = [
     "mlagents-envs==1.0.0",
     "numpy",
     "torch>=2.7",
-    "wandb",
+    # The Animal-AI v4 stack forces protobuf 3.20.3 (see the override below). wandb ships
+    # protobuf code generated per major version and dropped the 3.x generation after
+    # 0.19.11: from 0.20 on it carries only v5/v6/v7, so with 3.20.3 the dispatch in
+    # wandb/proto matches nothing and importing wandb fails.
+    "wandb<=0.19.11",
 ]
 
 [project.scripts]
@@ -51,7 +55,7 @@ line-length = 100
 src = ["src"]
 
 [tool.ruff.lint]
-select = ["I", "F"]
+select = ["I", "F", "UP"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

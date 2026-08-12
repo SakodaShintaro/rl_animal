@@ -66,7 +66,7 @@ class ChannelAttention(nn.Module):
     squashed to a per-channel gate.
     '''
     def __init__(self, depth):
-        super(ChannelAttention, self).__init__()
+        super().__init__()
         self.reduce = nn.Conv2d(depth, depth // 4, 1, bias=False)
         self.expand = nn.Conv2d(depth // 4, depth, 1, bias=False)
 
@@ -83,7 +83,7 @@ class FixupAttentionBlock(nn.Module):
     two convolutions.
     '''
     def __init__(self, depth):
-        super(FixupAttentionBlock, self).__init__()
+        super().__init__()
         self.res1 = nn.Conv2d(depth, depth, 3, padding=1, bias=False)
         self.res2 = nn.Conv2d(depth, depth, 3, padding=1, bias=False)
         self.attention = ChannelAttention(depth)
@@ -109,7 +109,7 @@ class LayerNormLSTMCell(nn.Module):
     state is normalized again before the output gate.
     '''
     def __init__(self, input_size, units):
-        super(LayerNormLSTMCell, self).__init__()
+        super().__init__()
         self.units = units
         self.wx = nn.Parameter(torch.zeros(input_size, 4 * units))
         self.gx = nn.Parameter(torch.ones(4 * units))
@@ -155,7 +155,7 @@ class AnimalAgent(nn.Module):
     uint8 in NHWC and the stacked velocity vector.
     '''
     def __init__(self):
-        super(AnimalAgent, self).__init__()
+        super().__init__()
         self.tower = nn.ModuleList()
         in_channels = VISUAL_CHANNELS
         for depth in DEPTHS:

@@ -119,12 +119,12 @@ def test_good_arena_passes():
 
 
 def test_unknown_item_name_is_refused():
-    with pytest.raises(ValueError, match='GoodMulti'):
+    with pytest.raises(AssertionError, match='GoodMulti'):
         arena.validate(UNKNOWN_NAME, 'fixture')
 
 
 def test_agent_without_positions_is_refused():
-    with pytest.raises(ValueError, match='Agent with no positions'):
+    with pytest.raises(AssertionError, match='Agent with no positions'):
         arena.validate(AGENT_WITHOUT_POSITIONS, 'fixture')
 
 
@@ -140,7 +140,7 @@ def test_collect_refuses_or_warns(tmp_path, capsys):
     (tmp_path / 'good.yaml').write_text(GOOD)
     (tmp_path / 'null.yaml').write_text(NULL_COLOURS)
 
-    with pytest.raises(ValueError, match='colors'):
+    with pytest.raises(AssertionError, match='color list with no value'):
         arena.collect(str(tmp_path), refuse_broken_colors=True)
 
     assert len(arena.collect(str(tmp_path), refuse_broken_colors=False)) == 2
