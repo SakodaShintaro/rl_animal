@@ -74,7 +74,7 @@ def item_blocks(lines):
         yield lines[start:end]
 
 
-def broken_colors(raw):
+def null_color_lists(raw):
     '''
     A `colors:` written with no value deserializes to null instead of leaving the C# side's
     default empty list, and Spawnable's constructor iterates it. Verified by restoring the
@@ -107,6 +107,11 @@ def validate(raw, path):
         f'{path} uses item names the v4 build does not have: {", ".join(unknown)}. It would '
         f'hang the player rather than report an error.')
 
+    null_colors = null_color_lists(raw)
+    assert len(null_colors) == 0, (
+        f'{path} writes {", ".join(null_colors)} with no value, which deserializes to null '
+        f'and kills the v4 player inside initVec3sFromRGBs; delete the key.')
+
     for block in item_blocks(raw.split('\n')):
         is_agent = any(AGENT_PATTERN.match(line) for line in block)
         has_positions = any(POSITIONS_PATTERN.match(line) for line in block)
@@ -129,34 +134,11 @@ def write_with_time(raw, arena_time, directory):
     return path
 
 
-def collect(directory, refuse_broken_colors):
-    '''
-    Every arena file in a directory, checked.
-
-    What hangs the player is always refused: one bad draw stalls training for good, and the
-    workers draw levels at random on every reset. A null color list is only refused when
-    asked for, because it does not always hang and because the released competition
-    scenarios have to be runnable as written; scoring them means accepting that nine of the
-    900 are built wrong. Training levels are ours to fix, so there it is an error.
-    '''
+def collect(directory):
     paths = sorted(os.path.join(directory, name) for name in os.listdir(directory)
                    if name.endswith('.yml') or name.endswith('.yaml'))
     assert len(paths) > 0, f'no arena files in {directory}'
-
-    broken = []
     for path in paths:
-        raw = open(path).read()
-        validate(raw, path)
-        keys = broken_colors(raw)
-        if len(keys) > 0:
-            broken.append((path, keys))
-
-    names = ', '.join(os.path.basename(path) for path, _ in broken)
-    assert not (refuse_broken_colors and len(broken) > 0), (
-        f'{names} write a color list with no value, which deserializes to null and kills the '
-        f'v4 player inside initVec3sFromRGBs; delete the key.')
-    if len(broken) > 0:
-        print(f'warning: {len(broken)} arena(s) write a color list with no value, so the v4 '
-              f'player builds them wrong: {names}')
+        validate(open(path).read(), path)
 
     return paths

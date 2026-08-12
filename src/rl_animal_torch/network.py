@@ -15,8 +15,9 @@ LAYER_NORM_EPSILON = 1e-5
 
 def same_padding(size, kernel, stride):
     '''
-    What TensorFlow's 'SAME' adds for one dimension, as (before, after). The total is
-    split with the larger half at the end, so odd totals are asymmetric.
+    Padding for one dimension, as (before, after), with the larger half at the end. The
+    pools this network was designed with pad at the bottom and right when the total is odd.
+    
     '''
     out = -(-size // stride)
     total = max((out - 1) * stride + kernel - size, 0)
@@ -26,8 +27,8 @@ def same_padding(size, kernel, stride):
 
 def max_pool_same(x, kernel, stride):
     '''
-    tf.layers.max_pooling2d(padding='same') excludes the padded region from the maximum,
-    which is -inf padding, and pads asymmetrically when the total is odd.
+    Pooling that keeps the output at ceil(size / stride), excluding the padded region from
+    the maximum.
     '''
     top, bottom = same_padding(x.shape[2], kernel, stride)
     left, right = same_padding(x.shape[3], kernel, stride)
@@ -167,7 +168,7 @@ class AnimalAgent(nn.Module):
             out = stage['block1'](out)
             out = stage['block2'](out)
         out = F.elu(out)
-        # back to NHWC before flattening: that is the order the dense layer was trained in
+        # channels last before flattening: the order the dense layer's weights expect
         return out.permute(0, 2, 3, 1).reshape(out.shape[0], -1)
 
     def forward(self, visual, vels, state, dones, env_num):

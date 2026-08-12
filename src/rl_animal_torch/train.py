@@ -42,7 +42,7 @@ def main():
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
 
-    arena_paths = arena.collect(ARENAS, refuse_broken_colors=True)
+    arena_paths = arena.collect(ARENAS)
     run_name = time.strftime('%Y%m%d_%H%M%S')
     result_dir = os.path.join(RESULT_DIR, run_name)
     os.makedirs(result_dir, exist_ok=True)

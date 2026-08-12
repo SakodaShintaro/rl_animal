@@ -20,7 +20,6 @@ def parse_args():
     parser.add_argument('--configs', default='configs/learning/competition_configurations',
                         help='directory of scenario yaml files')
     parser.add_argument('--num_envs', default=12, type=int)
-    parser.add_argument('--episodes', default=1, type=int, help='episodes per scenario')
     parser.add_argument('--base_port', default=5900, type=int)
     parser.add_argument('--seed', default=32, type=int)
     parser.add_argument('--stride', default=1, type=int,
@@ -39,15 +38,14 @@ def category_of(path):
     return os.path.basename(path).split('-')[0]
 
 
-def build_tasks(paths, episodes, num_envs):
+def build_tasks(paths, num_envs):
     '''
     Scenarios are dealt out up front, so a run is reproducible in which environment sees
     which scenario.
     '''
     tasks = [[] for _ in range(num_envs)]
     for index, path in enumerate(paths):
-        for episode in range(episodes):
-            tasks[index % num_envs].append((path, episode))
+        tasks[index % num_envs].append(path)
 
     return tasks
 
@@ -80,7 +78,7 @@ def evaluate(envs, agent, tasks, writer, config, device, log_every):
     start = time.time()
 
     def start_task(index):
-        path, _ = tasks[index][cursor[index]]
+        path = tasks[index][cursor[index]]
         raw = open(path).read()
         pass_mark[index] = arena.read_pass_mark(raw)
         max_steps[index] = (arena.read_arena_time(raw) * config.physics_steps_per_t
@@ -115,10 +113,9 @@ def evaluate(envs, agent, tasks, writer, config, device, log_every):
             if not done and steps[index] < max_steps[index]:
                 continue
 
-            path, episode = tasks[index][cursor[index]]
+            path = tasks[index][cursor[index]]
             row = {'scenario': os.path.basename(path), 'category': category_of(path),
-                   'pass_mark': pass_mark[index], 'episode': episode,
-                   'reward': reward[index],
+                   'pass_mark': pass_mark[index], 'reward': reward[index],
                    # a scenario is passed when the raw episode reward reaches its pass_mark
                    'passed': int(reward[index] >= pass_mark[index]),
                    'steps': steps[index]}
@@ -144,9 +141,8 @@ def main():
     args = parse_args()
     config = EnvConfig()
 
-    paths = arena.collect(args.configs, refuse_broken_colors=False)[::args.stride]
-    print(f'scenarios: {len(paths)}, episodes each: {args.episodes}, '
-          f'envs: {args.num_envs}')
+    paths = arena.collect(args.configs)[::args.stride]
+    print(f'scenarios: {len(paths)}, envs: {args.num_envs}')
 
     device = torch.device("cuda")
     agent = load_agent(args.checkpoint, device)
@@ -161,11 +157,10 @@ def main():
             for index in range(args.num_envs)]
     try:
         with open(output, 'w', buffering=1, newline='') as out_file:
-            fields = ['scenario', 'category', 'pass_mark', 'episode', 'reward', 'passed',
-                      'steps']
+            fields = ['scenario', 'category', 'pass_mark', 'reward', 'passed', 'steps']
             writer = csv.DictWriter(out_file, fieldnames=fields)
             writer.writeheader()
-            rows = evaluate(envs, agent, build_tasks(paths, args.episodes, args.num_envs),
+            rows = evaluate(envs, agent, build_tasks(paths, args.num_envs),
                             writer, config, device, 25)
     finally:
         for env in envs:

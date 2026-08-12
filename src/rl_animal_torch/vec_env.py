@@ -16,7 +16,6 @@ def worker_main(connection, env_path, arena_paths, worker_id, base_port, seed, c
         connection.send(env.reset())
         while True:
             command, payload = connection.recv()
-            assert command in ('step', 'reset', 'close'), f'unknown command {command}'
             if command == 'step':
                 observation, reward, done = env.step(payload)
                 if done:
@@ -47,7 +46,6 @@ class VecEnv:
         self.processes = []
         for index in range(num_actors):
             parent, child = context.Pipe()
-            # an instance serves on base_port + worker_id, so the index has to be unique
             process = context.Process(
                 target=worker_main,
                 args=(child, env_path, arena_paths, index, base_port, seed + index,

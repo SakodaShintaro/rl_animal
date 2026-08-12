@@ -87,17 +87,17 @@ def test_reads_time_and_pass_mark():
 
 
 def test_commented_entries_are_not_a_value():
-    assert arena.broken_colors(COMMENTED_THEN_LIVE) == []
+    assert arena.null_color_lists(COMMENTED_THEN_LIVE) == []
     arena.validate(COMMENTED_THEN_LIVE, 'fixture')
 
 
-def test_null_colors_are_found():
-    assert arena.broken_colors(NULL_COLOURS) == ['colors']
-    assert arena.broken_colors(NULL_COLOURS_AT_END) == ['colors']
+def test_null_color_lists_are_found():
+    assert arena.null_color_lists(NULL_COLOURS) == ['colors']
+    assert arena.null_color_lists(NULL_COLOURS_AT_END) == ['colors']
 
 
 def test_good_arena_passes():
-    assert arena.broken_colors(GOOD) == []
+    assert arena.null_color_lists(GOOD) == []
     arena.validate(GOOD, 'fixture')
 
 
@@ -119,16 +119,15 @@ def test_write_with_time_replaces_only_the_arena_time(tmp_path):
     assert 'name: GoodGoal' in written
 
 
-def test_collect_refuses_or_warns(tmp_path, capsys):
+def test_collect_refuses_a_broken_arena(tmp_path):
     (tmp_path / 'good.yaml').write_text(GOOD)
+    assert len(arena.collect(str(tmp_path))) == 1
+
     (tmp_path / 'null.yaml').write_text(NULL_COLOURS)
-
-    with pytest.raises(AssertionError, match='color list with no value'):
-        arena.collect(str(tmp_path), refuse_broken_colors=True)
-
-    assert len(arena.collect(str(tmp_path), refuse_broken_colors=False)) == 2
-    assert 'color list with no value' in capsys.readouterr().out
+    with pytest.raises(AssertionError, match='with no value'):
+        arena.collect(str(tmp_path))
 
 
 def test_the_shipped_arenas_are_accepted():
-    assert len(arena.collect('configs/learning/stage3', refuse_broken_colors=True)) == 59
+    assert len(arena.collect('configs/learning/stage3')) == 59
+    assert len(arena.collect('configs/learning/competition_configurations')) == 900

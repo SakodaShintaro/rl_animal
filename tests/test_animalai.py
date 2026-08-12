@@ -34,7 +34,7 @@ class SilentLogger:
 
 
 def test_one_instance_observes_and_steps(env_path, tmp_path):
-    paths = arena.collect(ARENAS, refuse_broken_colors=True)
+    paths = arena.collect(ARENAS)
     env = AnimalEnv(env_path, paths, 0, BASE_PORT, 0, EnvConfig(), shape_rewards=True,
                     scratch_dir=str(tmp_path))
     try:
@@ -60,7 +60,7 @@ def test_light_training(env_path, tmp_path):
     '''
     config = TrainingConfig(num_actors=2, steps_num=16, minibatch_size=16, mini_epochs=1,
                             seq_len=8, max_epochs=2)
-    paths = arena.collect(ARENAS, refuse_broken_colors=True)
+    paths = arena.collect(ARENAS)
     vec_env = VecEnv(env_path, paths, config.num_actors, BASE_PORT + 10, 0, EnvConfig(),
                      shape_rewards=True)
     try:
@@ -83,7 +83,7 @@ def test_light_evaluation(env_path, tmp_path):
     '''
     Three scenarios through one instance, scored the way the competition scores them.
     '''
-    paths = arena.collect(ARENAS, refuse_broken_colors=True)[:3]
+    paths = arena.collect(ARENAS)[:3]
     config = EnvConfig()
     envs = [AnimalEnv(env_path, paths, 0, BASE_PORT + 20, 0, config, shape_rewards=False,
                       scratch_dir=str(tmp_path))]
@@ -91,11 +91,10 @@ def test_light_evaluation(env_path, tmp_path):
     try:
         agent = AnimalAgent().eval()
         with open(str(output), 'w', newline='') as out_file:
-            fields = ['scenario', 'category', 'pass_mark', 'episode', 'reward', 'passed',
-                      'steps']
+            fields = ['scenario', 'category', 'pass_mark', 'reward', 'passed', 'steps']
             writer = csv.DictWriter(out_file, fieldnames=fields)
             writer.writeheader()
-            rows = evaluate(envs, agent, build_tasks(paths, 1, 1), writer, config,
+            rows = evaluate(envs, agent, build_tasks(paths, 1), writer, config,
                             torch.device('cpu'), log_every=1000)
     finally:
         for env in envs:
