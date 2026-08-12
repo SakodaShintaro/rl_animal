@@ -166,7 +166,7 @@ def main():
     args = parse_args()
     config = EnvConfig()
 
-    paths = arena.collect(args.configs)[::args.stride]
+    paths = arena.collect(args.configs, refuse_broken_colours=False)[::args.stride]
     print('scenarios: %d, episodes each: %d, envs: %d'
           % (len(paths), args.episodes, args.num_envs))
 

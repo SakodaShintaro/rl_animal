@@ -63,7 +63,7 @@ def main():
     cannot build hangs it silently, and the workers draw levels at random on every reset,
     so one bad file stalls the whole run sooner or later.
     '''
-    arena_paths = arena.collect(args.arenas)
+    arena_paths = arena.collect(args.arenas, refuse_broken_colours=True)
     print('%d arena files, all accepted' % len(arena_paths))
 
     env_config = EnvConfig()

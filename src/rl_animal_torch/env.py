@@ -107,8 +107,18 @@ class AnimalEnv:
         self.stacker = Stacker(config)
         self.arena_time = arena.read_arena_time(open(arena_paths[0]).read())
 
+        '''
+        When the player fails to come up, the only account of why is Unity's own log, which
+        otherwise goes to the throwaway home directory of whatever launched it. Set
+        AAI4_LOG_DIR to an absolute path to keep it; animalai names the file per worker.
+        '''
+        if 'AAI4_LOG_DIR' in os.environ:
+            log_folder = os.environ['AAI4_LOG_DIR']
+        else:
+            log_folder = ''
         self.env = environment_class(
             file_name=env_path,
+            log_folder=log_folder,
             worker_id=worker_id,
             base_port=base_port,
             seed=seed,

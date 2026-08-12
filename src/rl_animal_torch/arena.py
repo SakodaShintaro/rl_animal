@@ -4,23 +4,25 @@ v4 takes the arena as raw YAML text over a side channel and parses it itself, so
 never builds an object model: it reads the two fields the driver needs and refuses the
 files that would hang the player.
 
-Two ways of writing an arena make the v4 player spin instead of reporting anything, both
-of them accepted by v1 because v1 parsed the YAML in python:
+Two ways of writing an arena make the v4 player spin instead of reporting anything, and
+neither is visible from python: the symptoms are a connection timeout and a player log
+growing by gigabytes. One arena wrote 4.75 million exceptions into 3.8 GB before it was
+caught, which is why they are refused up front.
 
-- A list key with no value deserialises to null and overwrites the C# side's default
-  empty list. Spawnable's constructor iterates it (initVec3sFromRGBs), the exception
-  leaves the configuration dictionary empty because
-  ArenasConfigurations.UpdateWithConfigurationsReceived neither null-checks nor catches,
-  and TrainingArena.SetNextArenaID then divides by a zero arena count on every
-  FixedUpdate. The v1 parser normalised null to [] instead.
+- An item name the build does not have. The deserialised configuration ends up empty
+  because ArenasConfigurations.UpdateWithConfigurationsReceived neither null-checks nor
+  catches, and TrainingArena.SetNextArenaID then divides by a zero arena count on every
+  FixedUpdate. `GoodMulti`, a typo for GoodGoalMulti in one training level, did this; the
+  name is absent from the v1 build too, where it was silently skipped.
 - An Agent item with no positions. ArenaBuilders.InstantiateSpawnables reads
   agentSpawnablesFromUser[0].positions[0] unconditionally, so it throws
   ArgumentOutOfRangeException on every arena reset. In v1 an item with no positions was
-  simply placed at random; the way to ask v4 for that is an explicit -1 coordinate.
+  placed at random; the way to ask v4 for that is an explicit -1 coordinate.
 
-Neither is recoverable and neither is visible from python: the only symptoms are a
-connection timeout and a player log growing by gigabytes. One arena wrote 4.75 million
-exceptions into 3.8 GB before it was caught, which is why these are refused up front.
+`null_list_keys` finds a third suspicious shape, a list key written with no value, which
+deserialises to null rather than to the C# side's default empty list. It is reported by
+the tooling but not refused: the 900 released competition scenarios contain nine of them
+and run, so on its own it is survivable.
 """
 import os
 import re
@@ -97,6 +99,33 @@ def item_blocks(lines):
         yield lines[start:end]
 
 
+def broken_colours(raw):
+    '''
+    A `colors:` written with no value deserialises to null instead of leaving the C# side's
+    default empty list, and Spawnable's constructor iterates it. Verified by restoring the
+    single line into two training levels: with it the player dies, without it both run.
+
+        Error processing SideChannel message: System.NullReferenceException
+          at ArenasParameters.Spawnable.initVec3sFromRGBs
+          at ArenasParameters.Spawnable..ctor
+          at ArenasParameters.ArenasConfigurations.Add
+        KeyNotFoundException: Tried to load arena 0 but it did not exist
+        DivideByZeroException x 774678
+
+    How bad it is depends on whether an arena was added before the exception.
+    ArenasConfigurations.Add throwing on arena 0 leaves no arenas at all, and
+    TrainingArena.SetNextArenaID then divides by zero forever. Failing later leaves the
+    earlier arenas in place, and the player keeps answering while running an arena that was
+    never fully built: nine of the released competition scenarios are like this, and every
+    one of them scores exactly the step cap with only the time penalty.
+
+    A null `positions` or `sizes` on a non-Agent item is survivable; 101 of those appear
+    across the released scenarios, which all complete.
+    '''
+    return sorted({key for key, _ in null_list_keys(raw.split('\n'))}
+                  & {'colors', 'spawnColors'})
+
+
 def validate(raw, path):
     unknown = sorted(set(NAME_PATTERN.findall(raw)) - SPAWNABLE_NAMES)
     if len(unknown) > 0:
@@ -105,12 +134,6 @@ def validate(raw, path):
                          % (path, ', '.join(unknown)))
 
     lines = raw.split('\n')
-    empty = sorted({key for key, _ in null_list_keys(lines)})
-    if len(empty) > 0:
-        raise ValueError('%s has list keys with no value: %s. They deserialise to null in '
-                         'the v4 build and hang the player; delete the keys instead.'
-                         % (path, ', '.join(empty)))
-
     for block in item_blocks(lines):
         is_agent = any(AGENT_PATTERN.match(line) for line in block)
         has_positions = any(POSITIONS_PATTERN.match(line) for line in block)
@@ -133,17 +156,38 @@ def write_with_time(raw, arena_time, directory):
     return path
 
 
-def collect(directory):
+def collect(directory, refuse_broken_colours):
     '''
-    Every arena file in a directory, checked. A level that would hang the player is a
-    failure of the run, not something to skip quietly: one bad draw stalls training for
-    good, and the workers draw levels at random on every reset.
+    Every arena file in a directory, checked.
+
+    What hangs the player is always refused: one bad draw stalls training for good, and the
+    workers draw levels at random on every reset. A null colour list is only refused when
+    asked for, because it does not always hang and because the released competition
+    scenarios have to be runnable as written; scoring them means accepting that nine of the
+    900 are built wrong. Training levels are ours to fix, so there it is an error.
     '''
     paths = sorted(os.path.join(directory, name) for name in os.listdir(directory)
                    if name.endswith('.yml') or name.endswith('.yaml'))
     if len(paths) == 0:
         raise ValueError('no arena files in ' + directory)
+
+    broken = []
     for path in paths:
-        validate(open(path).read(), path)
+        raw = open(path).read()
+        validate(raw, path)
+        keys = broken_colours(raw)
+        if len(keys) > 0:
+            broken.append((path, keys))
+
+    if len(broken) > 0:
+        if refuse_broken_colours:
+            path, keys = broken[0]
+            raise ValueError('%s writes %s with no value, which deserialises to null and '
+                             'kills the v4 player inside initVec3sFromRGBs; delete the key. '
+                             '%d file(s) in this directory do it.'
+                             % (path, ', '.join(keys), len(broken)))
+        print('warning: %d arena(s) write a colour list with no value, so the v4 player '
+              'builds them wrong: %s'
+              % (len(broken), ', '.join(os.path.basename(path) for path, _ in broken)))
 
     return paths
