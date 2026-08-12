@@ -23,6 +23,20 @@ import torch.nn.functional as F
 from rl_animal_torch.network import LSTM_UNITS
 
 
+def format_duration(seconds):
+    '''
+    A full run is tens of hours, so days are worth separating out.
+    '''
+    seconds = int(seconds)
+    hours, remainder = divmod(seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    if hours >= 24:
+        days, hours = divmod(hours, 24)
+        return '%dd %d:%02d:%02d' % (days, hours, minutes, seconds)
+
+    return '%d:%02d:%02d' % (hours, minutes, seconds)
+
+
 def swap_and_flatten(array):
     '''
     [steps, actors, ...] -> [actors * steps, ...], which puts each environment's steps
@@ -244,8 +258,15 @@ class PPOTrainer:
         config = self.config
         best_reward = -float('inf')
         self.vec_env.reset()
+        '''
+        The rate is measured over this session only, so a run resumed with --restore
+        predicts from its own speed rather than from the whole history.
+        '''
+        started = time.time()
+        epochs_this_session = 0
         while self.epoch < config.max_epochs:
             self.epoch += 1
+            epochs_this_session += 1
             self.frame += self.batch_size
 
             collect_start = time.time()
@@ -264,10 +285,17 @@ class PPOTrainer:
                 self.writer.add_scalar('losses/' + name, value, self.frame)
             self.writer.add_scalar('epochs', self.epoch, self.frame)
 
-            report = ('epoch %d/%d  frame %d  %.0f steps/s  actor %.4f  critic %.4f  '
-                      'entropy %.4f' % (self.epoch, config.max_epochs, self.frame,
-                                        steps_per_second, losses['actor'],
-                                        losses['critic'], losses['entropy']))
+            elapsed = time.time() - started
+            remaining = (elapsed / epochs_this_session) * (config.max_epochs - self.epoch)
+            self.writer.add_scalar('performance/elapsed_hours', elapsed / 3600.0,
+                                   self.frame)
+            self.writer.add_scalar('performance/eta_hours', remaining / 3600.0, self.frame)
+
+            report = ('epoch %d/%d  frame %d  %.0f steps/s  elapsed %s  eta %s  '
+                      'actor %.4f  critic %.4f  entropy %.4f'
+                      % (self.epoch, config.max_epochs, self.frame, steps_per_second,
+                         format_duration(elapsed), format_duration(remaining),
+                         losses['actor'], losses['critic'], losses['entropy']))
             if len(self.episode_rewards) > 0:
                 mean_reward = float(np.mean(self.episode_rewards))
                 self.writer.add_scalar('mean_rewards', mean_reward, self.frame)
