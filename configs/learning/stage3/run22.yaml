@@ -7,10 +7,7 @@ arenas:
       name: GoodGoal
     - !Item
       name: HotZone
-      colors:
     - !Item
       name: HotZone
-      colors:
     - !Item
       name: HotZone
-      colors:

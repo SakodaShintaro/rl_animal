@@ -46,11 +46,52 @@ class RayWorker:
         return self.obs
 
 
+class RayWorkerV4(RayWorker):
+    """The Animal-AI v4 build takes the arena as raw text over a side channel rather
+    than as an ArenaConfig object, so a randomised episode length is applied by
+    rewriting the yaml into a temporary file instead of by setting config.arenas[0].t.
+    """
+    def __init__(self, config_name, worker_id):
+        import tempfile
+
+        self.worker_id = worker_id
+        self.all_tests = []
+        for file in os.listdir(LEARNING_DIR):
+            if file.endswith(".yml") or file.endswith(".yaml"):
+                self.all_tests.append(os.path.join(LEARNING_DIR, file))
+
+        self.scratch_dir = tempfile.mkdtemp(prefix='aai4_arenas_')
+        self.config_name = config_name
+        self.env = None
+        self.reset()
+
+    def reset(self):
+        import aai4_common
+
+        arena_time = np.random.randint(MIN_TIME, MAX_TIME)
+        chosen = self.all_tests[np.random.randint(0, len(self.all_tests))]
+        raw = open(chosen).read()
+        aai4_common.validate_arena(raw, chosen)
+        path = aai4_common.write_config_with_time(raw, arena_time, self.scratch_dir)
+        try:
+            if self.env is None:
+                self.env = configurations[self.config_name]['ENV_CREATOR'](
+                    False, path, self.worker_id)
+                self.obs = self.env.reset()
+            else:
+                self.env.set_arena_time(arena_time)
+                self.obs = self.env.reset(path)
+        finally:
+            os.remove(path)
+
+        return self.obs
+
+
 class RayVecEnv(IVecEnv):
-    def __init__(self, config_name, num_actors):
+    def __init__(self, config_name, num_actors, worker_class=RayWorker):
         self.config_name = config_name
         self.num_actors = num_actors
-        self.remote_worker = ray.remote(RayWorker)
+        self.remote_worker = ray.remote(worker_class)
         self.workers = [self.remote_worker.remote(self.config_name) for i in range(self.num_actors)]
 
     def step(self, actions):
@@ -124,8 +165,20 @@ class RayVecEnv2(IVecEnv):
 
     
 
+class RayVecEnvV4(RayVecEnv):
+    """Same rollout collection as RayVecEnv, but the workers are numbered so that each
+    Unity instance gets its own port."""
+    def __init__(self, config_name, num_actors):
+        self.config_name = config_name
+        self.num_actors = num_actors
+        self.remote_worker = ray.remote(RayWorkerV4)
+        self.workers = [self.remote_worker.remote(config_name, i) for i in range(num_actors)]
+
+
 def create_vec_env(config_name, num_actors):
     if configurations[config_name]['VECENV_TYPE'] == 'RAY':
         return RayVecEnv(config_name, num_actors)
+    if configurations[config_name]['VECENV_TYPE'] == 'RAY_V4':
+        return RayVecEnvV4(config_name, num_actors)
     if configurations[config_name]['VECENV_TYPE'] == 'ANIMAL':
         return create_animal(num_actors, inference=False)

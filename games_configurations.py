@@ -191,3 +191,22 @@ animal_ai_ray_times3 = {
     'SEQ_LEN' : 8,
     'MAX_EPOCHS' : 32000
 }
+
+
+"""
+Scratch training against the Animal-AI v4 (Unity 6) build. Same network and same
+hyperparameters as animal_ai_ray_times1, the configuration the released
+nn/last84_10_5 checkpoint was trained with and the one the evaluation drivers build
+their player from; only the environment differs.
+"""
+"""
+MAX_EPOCHS is set to the 70 million steps the presentation reports for the winning
+run ("Total 70 million of steps", 600 FPS, 40 hours of training), not to the 48000
+the times1 config carries, which is only an upper bound. A batch is
+NUM_ACTORS * STEPS_NUM = 24 * 256 = 6144 steps, so 70e6 / 6144 is about 11400.
+The presentation also describes dropping the entropy coefficient, learning rate and
+epsilon clip after the first 50 million steps, which is what animal_ai_ray_times2 is;
+this configuration stays on the times1 values for the whole run.
+"""
+animal_ai_v4 = dict(animal_ai_ray_times1, ENV_NAME='AnimalAIRayV4', NAME='animal_v4',
+                    MAX_EPOCHS=11400)

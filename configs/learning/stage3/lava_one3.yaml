@@ -7,7 +7,6 @@ arenas:
       name: Wall
       positions:
       - !Vector3 {x: 30, y: 0, z: -1}
-      colors:
       rotations: [-1]
       sizes:
       - !Vector3 {x: 1, y: -1, z: 32}
@@ -23,4 +22,6 @@ arenas:
       name: Wall
     - !Item
       name: Agent
+      positions:
+      - !Vector3 {x: -1, y: 0, z: -1}
 

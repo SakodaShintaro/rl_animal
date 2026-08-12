@@ -7,7 +7,6 @@ arenas:
       name: Wall
       positions:
       - !Vector3 {x: 37.5, y: 0, z: 20}
-      colors:
       rotations: [0]
       sizes:
       - !Vector3 {x: 5, y: 3, z: 40}
@@ -15,7 +14,6 @@ arenas:
       name: Ramp
       positions:
       - !Vector3 {x: 20, y: 0, z: 20}
-      colors:
       rotations: [270]
       sizes:
       - !Vector3 {x: 40, y: 3, z: 30}
