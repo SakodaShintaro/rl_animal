@@ -23,7 +23,6 @@ def parse_args():
     parser.add_argument('--episodes', default=1, type=int, help='episodes per scenario')
     parser.add_argument('--base_port', default=5900, type=int)
     parser.add_argument('--seed', default=32, type=int)
-    parser.add_argument('--device', default='cuda')
     parser.add_argument('--stride', default=1, type=int,
                         help='take every Nth scenario, for a quick look')
     return parser.parse_args()
@@ -149,7 +148,7 @@ def main():
     print(f'scenarios: {len(paths)}, episodes each: {args.episodes}, '
           f'envs: {args.num_envs}')
 
-    device = torch.device(args.device)
+    device = torch.device("cuda")
     agent = load_agent(args.checkpoint, device)
     stem = os.path.splitext(os.path.abspath(args.checkpoint))[0]
     output = f'{stem}_eval_{time.strftime("%Y%m%d_%H%M%S")}.csv'

@@ -32,7 +32,6 @@ def parse_args():
     parser.add_argument('--wandb_mode', default='online',
                         choices=['online', 'offline', 'disabled'])
     parser.add_argument('--seed', default=0, type=int)
-    parser.add_argument('--device', default='cuda')
     parser.add_argument('--restore', default=None, help='checkpoint of this trainer')
     return parser.parse_args()
 
@@ -57,7 +56,7 @@ def main():
                      EnvConfig(), shape_rewards=True)
     run = wandb.init(project=WANDB_PROJECT, name=run_name, mode=args.wandb_mode,
                      dir=result_dir, config=dict(vars(config), arenas=ARENAS, seed=args.seed))
-    trainer = PPOTrainer(AnimalAgent(), vec_env, config, torch.device(args.device),
+    trainer = PPOTrainer(AnimalAgent(), vec_env, config, torch.device("cuda"),
                          WandbLogger(run))
     if args.restore is not None:
         trainer.restore(args.restore)
