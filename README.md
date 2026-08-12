@@ -18,15 +18,15 @@ uv run patch_env_logging /path/to/animalAI.x86_64
 ```
 
 ```bash
-uv run train --env-path /path/to/animalAI.x86_64
+uv run train --env_path /path/to/animalAI.x86_64
 ```
 
 ## Evaluate
 
 ```bash
 uv run evaluate \
-    --env-path /path/to/animalAI.x86_64 \
-    --checkpoint results/20260812-213000/best.pt \
+    --env_path /path/to/animalAI.x86_64 \
+    --checkpoint results/20260812_213000/best.pt \
     --output results.csv
 ```
 

@@ -29,8 +29,8 @@ class WandbLogger:
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env-path', required=True, help='v4 animalAI.x86_64')
-    parser.add_argument('--wandb-mode', default='online',
+    parser.add_argument('--env_path', required=True, help='v4 animalAI.x86_64')
+    parser.add_argument('--wandb_mode', default='online',
                         choices=['online', 'offline', 'disabled'])
     parser.add_argument('--seed', default=0, type=int)
     parser.add_argument('--device', default='cuda')

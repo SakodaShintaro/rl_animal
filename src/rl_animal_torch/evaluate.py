@@ -16,15 +16,14 @@ from rl_animal_torch.network import AnimalAgent
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--env-path', required=True, help='v4 animalAI.x86_64')
+    parser.add_argument('--env_path', required=True, help='v4 animalAI.x86_64')
+    parser.add_argument('--checkpoint', required=True, help='a checkpoint written by train')
+    parser.add_argument('--output', required=True, help='csv to write')
     parser.add_argument('--configs', default='configs/learning/competition_configurations',
                         help='directory of scenario yaml files')
-    parser.add_argument('--checkpoint', required=True,
-                        help='a checkpoint written by train')
-    parser.add_argument('--output', required=True, help='csv to write')
-    parser.add_argument('--num-envs', default=12, type=int)
+    parser.add_argument('--num_envs', default=12, type=int)
     parser.add_argument('--episodes', default=1, type=int, help='episodes per scenario')
-    parser.add_argument('--base-port', default=5900, type=int)
+    parser.add_argument('--base_port', default=5900, type=int)
     parser.add_argument('--seed', default=32, type=int)
     parser.add_argument('--device', default='cuda')
     parser.add_argument('--stride', default=1, type=int,
