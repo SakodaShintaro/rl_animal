@@ -13,29 +13,6 @@ LSTM_UNITS = 512
 LAYER_NORM_EPSILON = 1e-5
 
 
-def same_padding(size, kernel, stride):
-    '''
-    Padding for one dimension, as (before, after), with the larger half at the end. The
-    pools this network was designed with pad at the bottom and right when the total is odd.
-    
-    '''
-    out = -(-size // stride)
-    total = max((out - 1) * stride + kernel - size, 0)
-    before = total // 2
-    return before, total - before
-
-
-def max_pool_same(x, kernel, stride):
-    '''
-    Pooling that keeps the output at ceil(size / stride), excluding the padded region from
-    the maximum.
-    '''
-    top, bottom = same_padding(x.shape[2], kernel, stride)
-    left, right = same_padding(x.shape[3], kernel, stride)
-    padded = F.pad(x, (left, right, top, bottom), value=float('-inf'))
-    return F.max_pool2d(padded, kernel, stride)
-
-
 class ChannelAttention(nn.Module):
     '''
     networks.channel_attention: the channel means through two bias-free 1x1 convolutions,
@@ -164,7 +141,7 @@ class AnimalAgent(nn.Module):
         out = visual.permute(0, 3, 1, 2).to(self.value_head.weight.dtype) / 255.0
         for stage in self.tower:
             out = stage['conv'](out)
-            out = max_pool_same(out, 3, 2)
+            out = F.max_pool2d(out, 3, 2, padding=1)
             out = stage['block1'](out)
             out = stage['block2'](out)
         out = F.elu(out)
