@@ -7,6 +7,8 @@ readme = "README.md"
 license = "MIT"
 dependencies = [
     "animalai==5.0.1",
+    # reads the .NET metadata of the player's assembly, for patch_env_logging
+    "dnfile",
     "mlagents-envs==1.0.0",
     "numpy",
     "torch>=2.7",
@@ -20,6 +22,7 @@ dependencies = [
 [project.scripts]
 train = "rl_animal_torch.train:main"
 evaluate = "rl_animal_torch.evaluate:main"
+patch_env_logging = "rl_animal_torch.patch_env_logging:main"
 
 [project.optional-dependencies]
 dev = ["pytest", "ruff"]
