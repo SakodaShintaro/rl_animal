@@ -1,4 +1,7 @@
+import os
 from dataclasses import dataclass
+
+ENV_PATH = os.path.expanduser('~/animalai_env/Linux/animalAI.x86_64')
 
 
 @dataclass(frozen=True)

@@ -14,27 +14,23 @@ The player logs one CSV row per step into a queue its writer cannot drain at thi
 throughput, which puts the host out of memory after a few hours. Disable it once:
 
 ```bash
-uv run patch_env_logging /path/to/animalAI.x86_64
+uv run patch_env_logging
 ```
 
 ```bash
-uv run train --env_path /path/to/animalAI.x86_64
+uv run train
 ```
 
 ## Evaluate
 
 ```bash
-uv run evaluate \
-    --env_path /path/to/animalAI.x86_64 \
-    --checkpoint results/20260812_213000/best.pt \
-    --output results.csv
+uv run evaluate --checkpoint results/20260812_213000/best.pt --output results.csv
 ```
 
 ## Test
 
 ```bash
 uv run pytest
-AAI4_ENV_PATH=/path/to/animalAI.x86_64 uv run pytest   # also the ones needing Unity
 ```
 
 ## License

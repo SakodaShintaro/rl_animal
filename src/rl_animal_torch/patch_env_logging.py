@@ -1,9 +1,10 @@
-import argparse
 import os
 import shutil
 import struct
 
 import dnfile
+
+from rl_animal_torch.config import ENV_PATH
 
 # The v4 player writes one CSV row per step into a queue that a background thread drains,
 # and at a high timescale the queue grows faster than it is written: a 24-actor run put the
@@ -15,12 +16,6 @@ ASSEMBLY = 'animalAI_Data/Managed/Scripts.dll'
 TYPE_NAME = 'CSVWriter'
 METHOD_NAME = 'LogToCSV'
 RET = 0x2A
-
-
-def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('env_path', help='v4 animalAI.x86_64')
-    return parser.parse_args()
 
 
 def body_offset(path):
@@ -41,8 +36,7 @@ def body_offset(path):
 
 
 def main():
-    args = parse_args()
-    path = os.path.join(os.path.dirname(os.path.abspath(args.env_path)), ASSEMBLY)
+    path = os.path.join(os.path.dirname(ENV_PATH), ASSEMBLY)
     assert os.path.exists(path), f'{path} does not exist'
 
     offset, size = body_offset(path)

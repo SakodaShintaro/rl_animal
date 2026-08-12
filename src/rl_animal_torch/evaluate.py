@@ -9,14 +9,13 @@ import torch
 import torch.nn.functional as F
 
 from rl_animal_torch import arena
-from rl_animal_torch.config import EnvConfig
+from rl_animal_torch.config import ENV_PATH, EnvConfig
 from rl_animal_torch.env import AnimalEnv
 from rl_animal_torch.network import AnimalAgent
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--env_path', required=True, help='v4 animalAI.x86_64')
     parser.add_argument('--checkpoint', required=True, help='a checkpoint written by train')
     parser.add_argument('--output', required=True, help='csv to write')
     parser.add_argument('--configs', default='configs/learning/competition_configurations',
@@ -157,7 +156,7 @@ def main():
 
     scratch = os.path.join(os.path.dirname(os.path.abspath(args.output)) or '.', '.arenas')
     os.makedirs(scratch, exist_ok=True)
-    envs = [AnimalEnv(args.env_path, paths, index, args.base_port, args.seed + index,
+    envs = [AnimalEnv(ENV_PATH, paths, index, args.base_port, args.seed + index,
                       config, shape_rewards=False, scratch_dir=scratch)
             for index in range(args.num_envs)]
     try:

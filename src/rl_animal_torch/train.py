@@ -7,7 +7,7 @@ import torch
 import wandb
 
 from rl_animal_torch import arena
-from rl_animal_torch.config import EnvConfig, TrainingConfig
+from rl_animal_torch.config import ENV_PATH, EnvConfig, TrainingConfig
 from rl_animal_torch.network import AnimalAgent
 from rl_animal_torch.ppo import PPOTrainer
 from rl_animal_torch.vec_env import VecEnv
@@ -29,7 +29,6 @@ class WandbLogger:
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env_path', required=True, help='v4 animalAI.x86_64')
     parser.add_argument('--wandb_mode', default='online',
                         choices=['online', 'offline', 'disabled'])
     parser.add_argument('--seed', default=0, type=int)
@@ -54,7 +53,7 @@ def main():
           f'{config.steps_num} steps = {batch} per batch, {config.max_epochs} epochs, '
           f'{batch * config.max_epochs} steps total')
 
-    vec_env = VecEnv(args.env_path, arena_paths, config.num_actors, BASE_PORT, args.seed,
+    vec_env = VecEnv(ENV_PATH, arena_paths, config.num_actors, BASE_PORT, args.seed,
                      EnvConfig(), shape_rewards=True)
     run = wandb.init(project=WANDB_PROJECT, name=run_name, mode=args.wandb_mode,
                      dir=result_dir, config=dict(vars(config), arenas=ARENAS, seed=args.seed))

@@ -1,6 +1,6 @@
 """A light training run and a light evaluation against the real Animal-AI v4 player.
 
-Skipped unless AAI4_ENV_PATH points at the binary.
+Skipped unless the player binary is installed.
 """
 import csv
 import os
@@ -10,7 +10,7 @@ import pytest
 import torch
 
 from rl_animal_torch import arena
-from rl_animal_torch.config import EnvConfig, TrainingConfig
+from rl_animal_torch.config import ENV_PATH, EnvConfig, TrainingConfig
 from rl_animal_torch.env import AnimalEnv, observation_shapes
 from rl_animal_torch.evaluate import build_tasks, evaluate
 from rl_animal_torch.network import AnimalAgent
@@ -23,12 +23,9 @@ BASE_PORT = 7100
 
 @pytest.fixture(scope='module')
 def env_path():
-    if 'AAI4_ENV_PATH' not in os.environ:
-        pytest.skip('set AAI4_ENV_PATH to the v4 animalAI.x86_64 to run this')
-    path = os.environ['AAI4_ENV_PATH']
-    if not os.path.exists(path):
-        pytest.skip(f'{path} does not exist')
-    return path
+    if not os.path.exists(ENV_PATH):
+        pytest.skip(f'{ENV_PATH} does not exist')
+    return ENV_PATH
 
 
 class SilentLogger:
