@@ -3,22 +3,13 @@ import random
 from collections import deque
 
 import numpy as np
+from animalai.environment import AnimalAIEnvironment
+from mlagents_envs.base_env import ActionTuple
 
 from rl_animal_torch import arena
 from rl_animal_torch.config import EnvConfig
 
 ACTIONS_NUM = 9
-
-
-def import_animalai():
-    '''
-    Kept in a function so that a process which only builds the network, or only reads
-    arena files, does not need animalai or its grpc stack.
-    '''
-    from animalai.environment import AnimalAIEnvironment
-    from mlagents_envs.base_env import ActionTuple
-
-    return AnimalAIEnvironment, ActionTuple
 
 
 class Stacker:
@@ -75,7 +66,6 @@ class AnimalEnv:
     '''
     def __init__(self, env_path, arena_paths, worker_id, base_port, seed, config,
                  shape_rewards, scratch_dir):
-        environment_class, self.action_tuple_class = import_animalai()
         self.config = config
         self.arena_paths = arena_paths
         self.shape_rewards = shape_rewards
@@ -88,7 +78,7 @@ class AnimalEnv:
             log_folder = os.environ['AAI4_LOG_DIR']
         else:
             log_folder = ''
-        self.env = environment_class(
+        self.env = AnimalAIEnvironment(
             file_name=env_path,
             log_folder=log_folder,
             worker_id=worker_id,
@@ -142,7 +132,7 @@ class AnimalEnv:
         Split from receive so that a driver holding several instances can hand the action
         to all of them before waiting on any.
         '''
-        self.env.set_actions(self.behavior, self.action_tuple_class(
+        self.env.set_actions(self.behavior, ActionTuple(
             continuous=np.zeros((1, 0), dtype=np.float32),
             # v4's two 3-way branches, in the order the flattened Discrete(9) assumed
             discrete=np.array([[action // 3, action % 3]], dtype=np.int32)))
