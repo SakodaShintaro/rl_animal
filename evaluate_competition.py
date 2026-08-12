@@ -32,8 +32,10 @@ import tensorflow as tf
 import yaml
 
 import animalai_wrapper
+import competition_common
 import env_configurations
 import games_configurations
+from competition_common import build_tasks, category_of, report
 
 
 def parse_args():
@@ -54,18 +56,8 @@ def load_competition_config(path):
     raw = open(path).read()
     config = yaml.load(re.sub(r'^[ \t]*pass_mark:.*\n', '', raw, flags=re.M), Loader=yaml.Loader)
 
-    match = re.search(r'pass_mark:\s*([-\d.]+)', raw)
-    if match is None:
-        '''
-        10-22-2.yml is the only released scenario without a pass_mark. The other
-        two variants of the same test (10-22-1, 10-22-3) both use 0.
-        '''
-        return config, 0.0
+    return config, competition_common.read_pass_mark(raw)
 
-    return config, float(match.group(1))
-
-def category_of(path):
-    return path.split('/')[-1].split('-')[0]
 
 def use_raw_rewards():
     '''
@@ -179,19 +171,6 @@ class RayEnvs:
         ray.get([worker.close.remote() for worker in self.workers])
 
 
-def build_tasks(paths, episodes, num_envs):
-    '''
-    Scenarios are dealt out to the environments up front, so a run is reproducible
-    in terms of which environment sees which scenario.
-    '''
-    tasks = [[] for _ in range(num_envs)]
-    for i, path in enumerate(paths):
-        for episode in range(episodes):
-            tasks[i % num_envs].append((path, episode))
-
-    return tasks
-
-
 def evaluate(envs, player, tasks, writer, log_every):
     num_envs = len(tasks)
     cursor = [0] * num_envs
@@ -253,15 +232,6 @@ def evaluate(envs, player, tasks, writer, log_every):
                     np.mean([row[3] for row in rows])))
 
     return rows
-
-def report(rows):
-    print('pass rate: %.4f (%d / %d episodes)' % (
-        np.mean([row[3] for row in rows]), sum(row[3] for row in rows), len(rows)))
-    print('mean reward: %.4f' % np.mean([row[2] for row in rows]))
-    for category in sorted(set(category_of(row[0]) for row in rows), key=int):
-        in_category = [row[3] for row in rows if category_of(row[0]) == category]
-        print('  category %-3s pass rate %.3f (%d episodes)' % (
-            category, np.mean(in_category), len(in_category)))
 
 def main():
     args = parse_args()
