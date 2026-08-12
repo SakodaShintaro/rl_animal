@@ -1,25 +1,4 @@
-"""The policy network: a residual convolutional tower, a layer-normalized LSTM, and heads.
-
-This is the architecture of the agent that won the NeurIPS 2019 Animal AI Olympics, built
-in PyTorch. It was ported from the original TensorFlow 1.15 implementation and checked
-against it to a relative 1e-06 before that implementation was removed; the details below
-are the ones that had to be right for the two to agree, and are worth keeping in mind if
-the network is ever changed.
-
-- TensorFlow flattens NHWC, so the feature map has to be permuted back to NHWC before
-  being flattened, or the 4608-wide dense layer sees its inputs in the wrong order.
-- 'SAME' padding is asymmetric when the padding is odd, which it is for the first two
-  max pools (84 -> 42 and 42 -> 21 both need one row and column, and TensorFlow puts it
-  at the bottom and right). nn.MaxPool2d's symmetric padding gives the same output size
-  but shifts every pixel.
-- The layer-normalized LSTM normalizes the input and recurrent contributions separately,
-  over the whole 4 * units axis rather than per gate, adds a third bias afterwards, and
-  normalizes the cell state again inside the output gate. Its gate order is i, f, o, u.
-- A batch of batch_num observations is laid out environment-major: the entry for
-  environment e at step t is at e * steps_num + t.
-
-Actions are not drawn here; the caller samples from the logits.
-"""
+"""The policy: a residual convolutional tower, a layer-normalized LSTM, and heads."""
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -32,9 +11,6 @@ DEPTHS = (16, 32, 64, 128)
 HIDDEN_NODES = 1024
 VELS_HIDDEN = 128
 LSTM_UNITS = 512
-'''
-networks._ln adds this to the variance before the square root.
-'''
 LAYER_NORM_EPSILON = 1e-5
 
 
@@ -192,10 +168,6 @@ class AnimalAgent(nn.Module):
             out = stage['block1'](out)
             out = stage['block2'](out)
         out = F.elu(out)
-        '''
-        Back to NHWC before flattening, because that is the order the dense layer's
-        weights were trained in.
-        '''
         return out.permute(0, 2, 3, 1).reshape(out.shape[0], -1)
 
     def forward(self, visual, vels, state, dones, env_num):
@@ -210,10 +182,6 @@ class AnimalAgent(nn.Module):
                             F.elu(self.visual_hidden(flat))], dim=-1)
         hidden = F.elu(self.joint_hidden(hidden))
 
-        '''
-        batch_to_seq reshapes the environment-major batch into (env_num, steps_num) and
-        hands the steps over one at a time.
-        '''
         sequence = hidden.reshape(env_num, steps_num, -1).unbind(dim=1)
         mask_sequence = dones.to(hidden.dtype).reshape(env_num, steps_num).unbind(dim=1)
         outputs, lstm_state = self.lstm(sequence, state, mask_sequence)

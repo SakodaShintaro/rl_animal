@@ -1,10 +1,4 @@
-"""The arena checks, against inputs whose verdict is known.
-
-These exist because the null-list-key detector was once written and trusted without being
-tested, and it read a comment as a value: an arena whose `colors:` is followed by
-commented-out entries and then by live ones was called null, and files that were perfectly
-good got edited on the strength of it.
-"""
+"""The arena checks, against inputs whose verdict is known."""
 import pytest
 
 from rl_animal_torch import arena
@@ -22,10 +16,6 @@ arenas:
       name: GoodGoal
 """
 
-'''
-The shape that the released competition scenarios use: the key, a run of commented-out
-entries, and then the entries that are still live. The list is not null.
-'''
 COMMENTED_THEN_LIVE = """!ArenaConfig
 arenas:
   0: !Arena
@@ -45,9 +35,6 @@ arenas:
       - !RGB {r: 0, g: 0, b: 255}
 """
 
-'''
-Genuinely null: the next thing at this level is another key.
-'''
 NULL_COLOURS = """!ArenaConfig
 arenas:
   0: !Arena
@@ -65,10 +52,6 @@ arenas:
       rotations: [0]
 """
 
-'''
-Also null: the key is the last thing in its item, and the next line dedents into the
-enclosing items list.
-'''
 NULL_COLOURS_AT_END = """!ArenaConfig
 arenas:
   0: !Arena

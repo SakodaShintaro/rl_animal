@@ -1,16 +1,7 @@
-"""Score a checkpoint on the Animal-AI Olympics competition scenarios, in PyTorch only.
+"""Score a checkpoint on the competition scenarios.
 
     uv run evaluate --env-path /path/to/animalAI.x86_64 \
-        --checkpoint nn/20260812-213000_best.pt \
-        --output results.csv
-
-Each scenario carries a pass_mark and is passed when the episode's total environment
-reward reaches it. The rewards used here are the raw ones, not the shaped ones training
-uses, so the numbers stay comparable to the competition score.
-
-Every environment keeps sending its last observation once it has run out of scenarios,
-because the recurrent state is laid out one slot per environment and dropping a slot would
-shift the rest.
+        --checkpoint nn/20260812-213000_best.pt --output results.csv
 """
 import argparse
 import csv
@@ -101,10 +92,6 @@ def evaluate(envs, agent, tasks, writer, config, device, log_every):
         path, _ = tasks[index][cursor[index]]
         raw = open(path).read()
         pass_mark[index] = arena.read_pass_mark(raw)
-        '''
-        A v4 episode ends on its own after t * physics_steps_per_t physics steps; the
-        margin is only a guard against an instance that never reports terminal.
-        '''
         max_steps[index] = (arena.read_arena_time(raw) * config.physics_steps_per_t
                             // config.decision_period + 100)
         reward[index] = 0.0

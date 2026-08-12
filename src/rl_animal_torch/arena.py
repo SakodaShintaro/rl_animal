@@ -1,37 +1,12 @@
-"""Reading, checking and rewriting the Animal-AI arena configuration files.
+"""Reading, checking and rewriting the arena configuration files.
 
-v4 takes the arena as raw YAML text over a side channel and parses it itself, so this
-never builds an object model: it reads the two fields the driver needs and refuses the
-files that would hang the player.
-
-Two ways of writing an arena make the v4 player spin instead of reporting anything, and
-neither is visible from python: the symptoms are a connection timeout and a player log
-growing by gigabytes. One arena wrote 4.75 million exceptions into 3.8 GB before it was
-caught, which is why they are refused up front.
-
-- An item name the build does not have. The deserialized configuration ends up empty
-  because ArenasConfigurations.UpdateWithConfigurationsReceived neither null-checks nor
-  catches, and TrainingArena.SetNextArenaID then divides by a zero arena count on every
-  FixedUpdate. `GoodMulti`, a typo for GoodGoalMulti in one training level, did this; the
-  name is absent from the v1 build too, where it was silently skipped.
-- An Agent item with no positions. ArenaBuilders.InstantiateSpawnables reads
-  agentSpawnablesFromUser[0].positions[0] unconditionally, so it throws
-  ArgumentOutOfRangeException on every arena reset. In v1 an item with no positions was
-  placed at random; the way to ask v4 for that is an explicit -1 coordinate.
-
-`null_list_keys` finds a third suspicious shape, a list key written with no value, which
-deserializes to null rather than to the C# side's default empty list. It is reported by
-the tooling but not refused: the 900 released competition scenarios contain nine of them
-and run, so on its own it is survivable.
+An arena the v4 player cannot build makes it stop answering instead of reporting anything,
+so the shapes that do that are refused before any instance is launched.
 """
 import os
 import re
 import tempfile
 
-'''
-Every item name the v4 build accepts, from the union of the names used by the 900
-competition scenarios and by configs/learning/stage3.
-'''
 SPAWNABLE_NAMES = frozenset([
     'Agent', 'BadGoal', 'BadGoalBounce', 'Cardbox1', 'Cardbox2', 'Cylinder',
     'CylinderTunnel', 'CylinderTunnelTransparent', 'DeathZone', 'GoodGoal',
@@ -81,12 +56,6 @@ def null_list_keys(lines):
         indent = len(line) - len(line.lstrip())
         for following in lines[index + 1:]:
             content = following.strip()
-            '''
-            Blank lines and comments say nothing about whether the key has a value. Nine of
-            the released competition scenarios write a long run of commented-out !RGB
-            entries between `colors:` and the entries that are still live, and reading the
-            first comment as the answer calls a perfectly good list null.
-            '''
             if len(content) == 0 or content.startswith('#'):
                 continue
             following_indent = len(following) - len(following.lstrip())

@@ -1,14 +1,4 @@
-"""Several Animal-AI instances in worker processes, stepped in lockstep.
-
-The original used ray for this; a pool of processes over pipes is enough and keeps the
-dependency list to torch plus animalai. Each worker owns one Unity instance, and the
-worker index is what decides its port: an instance serves gRPC on base_port + worker_id,
-and two instances landing on the same port leave the client waiting for a server that
-never answers.
-
-An episode that ends is reset inside the worker, so the observation returned with a done
-flag already belongs to the next episode, which is what the training loop expects.
-"""
+"""Several Animal-AI instances in worker processes, stepped in lockstep."""
 import multiprocessing as mp
 import os
 import tempfile
@@ -68,10 +58,6 @@ class VecEnv:
             self.connections.append(parent)
             self.processes.append(process)
 
-        '''
-        Each worker sends its first observation as soon as its instance is up, so this
-        also waits out the startup of every player before the first step is asked for.
-        '''
         self.last = [connection.recv() for connection in self.connections]
 
     def observations(self):

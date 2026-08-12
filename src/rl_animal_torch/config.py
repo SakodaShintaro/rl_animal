@@ -1,16 +1,4 @@
-"""The hyperparameters of the winning run, and the environment settings the port needs.
-
-The training values come from games_configurations.animal_ai_ray_times1, which is the
-configuration the released checkpoints were trained with, and from the presentation:
-"Total 70 million of steps", 600 frames per second, 40 hours. A batch is
-num_actors * steps_num = 6144 steps, so 70e6 steps is about 11400 epochs, not the 48000
-the original config carried as an upper bound.
-
-The presentation also describes dropping the entropy coefficient to 0.001, the learning rate
-to 5e-5 and the clipping to 0.1 after the first 50 million steps. That was a second stage
-rather than a schedule, and it is not reproduced here: this configuration keeps the first
-stage's values for the whole run.
-"""
+"""The hyperparameters of the winning run, and the environment settings."""
 from dataclasses import dataclass
 
 
@@ -69,26 +57,13 @@ class EnvConfig:
     decision_period: int = 5
     timescale: int = 300
     target_frame_rate: int = -1
-    '''
-    The episode length randomization the original training applied to every new level.
-    '''
     min_time: int = 200
     max_time: int = 1100
-    '''
-    animalai_wrapper divided the velocity by this before the network saw it.
-    '''
     velocity_scale: tuple = (1.0, 1.0, 16.0)
     visual_frames: int = 2
     velocity_frames: int = 2
-    '''
-    AnimalStack expressed the remaining time as a fraction of 250 decisions.
-    '''
     time_unit: float = 250.0
     physics_steps_per_t: int = 5
-    '''
-    animalai_wrapper.calc_rewards_v2: a bonus on any positive reward, a bonus for upward
-    velocity so that ramps get explored, and a penalty for reversing.
-    '''
     reward_bonus: float = 0.5
     ramps_coef: float = 1.0 / 100.0
     back_move_coef: float = 1.0 / 1000.0

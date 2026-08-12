@@ -1,22 +1,4 @@
-"""One Animal-AI v4 instance, presenting what the trained network expects.
-
-The network was trained against the v1 environment through three wrappers
-(AnimalSkip / AnimalWrapper / AnimalStack), so the observation it expects is not what v4
-hands over:
-
-- v4 gives the camera as CHW float in [0, 1]; the network wants uint8 HWC, and two frames
-  stacked on the channel axis.
-- v4's vector observation is [health, vx, vy, vz, px, py, pz]. The network only ever saw
-  the velocity, divided by velocity_scale, with the remaining episode time appended, two
-  entries stacked.
-- The action space matches exactly. v1 flattened two 3-way branches into Discrete(9) as
-  [a // 3, a % 3], and v4's MultiDiscrete([3, 3]) uses the same branch order: 0 none /
-  1 forward / 2 back, and 0 none / 1 right / 2 left.
-
-Rewards are the raw environment rewards, which include v4's per-step time penalty; the
-training shaping is applied on top when asked for, as animalai_wrapper.calc_rewards_v2
-did, from the unscaled velocity.
-"""
+"""One Animal-AI v4 instance, presenting the stacked frames and velocities the network takes."""
 import os
 import random
 from collections import deque
@@ -51,12 +33,6 @@ class Stacker:
         self.vels = deque([], maxlen=config.velocity_frames)
         self.time = 0.0
         self.velocity_scale = np.asarray(config.velocity_scale, dtype=np.float32)
-        '''
-        With decision_period 5 an episode is `t` decisions long, so counting down one
-        time_unit-th per decision reaches zero exactly at the end, as in training. Any
-        other decision period stretches the episode, so the step is scaled to keep that
-        property instead of letting the countdown go negative.
-        '''
         self.time_decrement = config.decision_period / (
             config.physics_steps_per_t * config.time_unit)
 
@@ -107,11 +83,6 @@ class AnimalEnv:
         self.stacker = Stacker(config)
         self.arena_time = arena.read_arena_time(open(arena_paths[0]).read())
 
-        '''
-        When the player fails to come up, the only account of why is Unity's own log, which
-        otherwise goes to the throwaway home directory of whatever launched it. Set
-        AAI4_LOG_DIR to an absolute path to keep it; animalai names the file per worker.
-        '''
         if 'AAI4_LOG_DIR' in os.environ:
             log_folder = os.environ['AAI4_LOG_DIR']
         else:

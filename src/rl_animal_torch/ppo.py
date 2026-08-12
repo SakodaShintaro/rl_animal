@@ -1,18 +1,4 @@
-"""PPO with a recurrent policy, as a2c_discrete.A2CAgent implemented it.
-
-The details that make this the same algorithm rather than a generic PPO:
-
-- The rollout is collected environment-major. Data arrives as [steps, actors, ...] and is
-  transposed to [actors, steps, ...] before flattening, so every contiguous run of
-  seq_len entries belongs to one environment. The recurrent state carried into each such
-  run is the one recorded at its first step.
-- The update shuffles whole sequences, never individual steps, and rebuilds the network
-  over minibatch_size / seq_len sequences of seq_len steps.
-- Both the policy and the value loss are clipped, and the maximum of clipped and
-  unclipped is taken. The value loss is halved again by critic_coef * 0.5.
-- Advantages are normalized across the whole batch, before it is split.
-- Gradients are clipped by global norm.
-"""
+"""PPO with a recurrent policy."""
 import time
 from collections import deque
 
@@ -94,11 +80,6 @@ class PPOTrainer:
     def act(self, visual, vels):
         logits, value, self.state = self.agent(visual, vels, self.state, self.dones,
                                                self.config.num_actors)
-        '''
-        models.LSTMModelA2C sampled with a Gumbel-max over a uniform tensor, which is a
-        draw from the categorical distribution; torch.multinomial is the same distribution
-        with this framework's generator.
-        '''
         probabilities = F.softmax(logits, dim=-1)
         actions = torch.multinomial(probabilities, 1).squeeze(-1)
         neglogpacs = F.cross_entropy(logits, actions, reduction='none')
@@ -167,10 +148,6 @@ class PPOTrainer:
 
         flat = {name: swap_and_flatten(np.asarray(steps[name]))
                 for name in ('visual', 'vels', 'actions', 'states')}
-        '''
-        states keeps one recurrent state per sequence, the one recorded at the sequence's
-        first step.
-        '''
         return Rollout(
             visual=torch.as_tensor(flat['visual'], device=self.device),
             vels=torch.as_tensor(flat['vels'], device=self.device),
@@ -235,10 +212,6 @@ class PPOTrainer:
             value_loss = torch.max(value_loss, (clipped_values - returns) ** 2)
         critic_loss = value_loss.mean()
 
-        '''
-        The entropy of the categorical distribution, which is what
-        softmax_cross_entropy_with_logits(logits, softmax(logits)) computes.
-        '''
         log_probabilities = F.log_softmax(logits, dim=-1)
         entropy = -(log_probabilities.exp() * log_probabilities).sum(dim=-1).mean()
 
@@ -260,10 +233,6 @@ class PPOTrainer:
         config = self.config
         best_reward = -float('inf')
         self.vec_env.reset()
-        '''
-        The rate is measured over this session only, so a run resumed with --restore
-        predicts from its own speed rather than from the whole history.
-        '''
         started = time.time()
         epochs_this_session = 0
         while self.epoch < config.max_epochs:

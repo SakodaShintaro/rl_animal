@@ -1,3 +1,7 @@
+"""Train against the Animal-AI v4 environment.
+
+    uv run train --env-path /path/to/animalAI.x86_64
+"""
 import argparse
 import os
 import time
@@ -16,11 +20,6 @@ ARENAS = 'configs/learning/stage3'
 
 
 class WandbLogger:
-    """The one method PPOTrainer asks for, over a wandb run.
-
-    The step is the environment frame rather than the epoch, so runs with different batch
-    sizes line up on the x axis.
-    """
     def __init__(self, run):
         self.run = run
 
@@ -58,11 +57,6 @@ def main():
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
 
-    '''
-    Every arena is checked before a single instance is launched: a level the v4 player
-    cannot build hangs it silently, and the workers draw levels at random on every reset,
-    so one bad file stalls the whole run sooner or later.
-    '''
     arena_paths = arena.collect(ARENAS, refuse_broken_colors=True)
     print(f'{len(arena_paths)} arena files in {ARENAS}, all accepted')
 

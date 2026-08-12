@@ -1,14 +1,6 @@
 """A light training run and a light evaluation against the real Animal-AI v4 player.
 
-Skipped unless AAI4_ENV_PATH points at the binary, since it is not part of the repository.
-
-    AAI4_ENV_PATH=/path/to/animalAI.x86_64 uv run pytest tests/test_animalai.py
-
-These are slow by the standards of the rest of the suite -- each Unity instance takes about
-fifteen seconds to come up -- but they are the only thing that covers the parts a unit test
-cannot reach: that the observation the player sends can be stacked into what the network
-takes, that the arena reset path works with a randomized episode length, and that a worker
-process can hold an instance.
+Skipped unless AAI4_ENV_PATH points at the binary.
 """
 import csv
 import os
@@ -26,9 +18,6 @@ from rl_animal_torch.ppo import PPOTrainer
 from rl_animal_torch.vec_env import VecEnv
 
 ARENAS = 'configs/learning/stage3'
-'''
-Ports well away from the defaults, so a test never collides with a run in progress.
-'''
 BASE_PORT = 7100
 
 
@@ -57,10 +46,6 @@ def test_one_instance_observes_and_steps(env_path, tmp_path):
         assert visual.shape == visual_shape and visual.dtype == np.uint8
         assert vels.shape == vels_shape
 
-        '''
-        The last element of each velocity entry is the countdown, which starts at
-        t / time_unit and has to fall.
-        '''
         first_time = vels[-1]
         for _ in range(5):
             (_, vels), reward, done = env.step(3)

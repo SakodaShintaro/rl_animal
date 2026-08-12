@@ -1,10 +1,4 @@
-"""A light training run, without Unity.
-
-The environment is replaced by one that returns noise and ends an episode now and then, so
-what is under test is the part that a wrong port breaks silently: that the rollout is laid
-out the way the recurrent update assumes, that one recurrent state is kept per sequence,
-that the losses are finite, and that the optimizer moves the weights.
-"""
+"""A light training run against a stand-in environment."""
 import numpy as np
 import torch
 
@@ -13,10 +7,6 @@ from rl_animal_torch.env import observation_shapes
 from rl_animal_torch.network import LSTM_UNITS, AnimalAgent
 from rl_animal_torch.ppo import PPOTrainer, format_duration, swap_and_flatten
 
-'''
-Small, but with the same divisibility the real run has: the batch splits into whole
-sequences and into whole minibatches.
-'''
 LIGHT = type(TRAINING)(**dict(vars(TRAINING), num_actors=4, steps_num=16, minibatch_size=32,
                             mini_epochs=2, seq_len=8, max_epochs=2))
 
@@ -41,9 +31,6 @@ class NoiseVecEnv:
         self.steps += 1
         rewards = self.random.normal(size=self.num_actors).astype(np.float32)
         dones = np.zeros(self.num_actors, dtype=bool)
-        '''
-        End one episode every few steps so the recurrent reset mask is exercised.
-        '''
         if self.steps % 5 == 0:
             dones[self.random.randint(0, self.num_actors)] = True
         return self.observations(), rewards, dones
