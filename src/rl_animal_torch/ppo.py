@@ -123,7 +123,7 @@ class PPOTrainer:
 
     def finish(self, steps, last_values):
         '''
-        Generalised advantage estimation over the collected steps, then the same
+        Generalized advantage estimation over the collected steps, then the same
         environment-major flattening the original applied.
         '''
         config = self.config
