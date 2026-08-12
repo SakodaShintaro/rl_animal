@@ -24,7 +24,7 @@ uv run train
 ## Evaluate
 
 ```bash
-uv run evaluate --checkpoint results/20260812_213000/best.pt --output results.csv
+uv run evaluate --checkpoint results/20260812_213000/best.pt
 ```
 
 ## Test

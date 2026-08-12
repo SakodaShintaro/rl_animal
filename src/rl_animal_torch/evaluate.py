@@ -17,7 +17,6 @@ from rl_animal_torch.network import AnimalAgent
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--checkpoint', required=True, help='a checkpoint written by train')
-    parser.add_argument('--output', required=True, help='csv to write')
     parser.add_argument('--configs', default='configs/learning/competition_configurations',
                         help='directory of scenario yaml files')
     parser.add_argument('--num_envs', default=12, type=int)
@@ -59,7 +58,7 @@ def report(rows):
     mean_reward = np.mean([row['reward'] for row in rows])
     print(f'pass rate: {np.mean(passed):.4f} ({sum(passed)} / {len(rows)} episodes)')
     print(f'mean reward: {mean_reward:.4f}')
-    for category in sorted({row['category'] for row in rows}, key=int):
+    for category in sorted({row['category'] for row in rows}):
         in_category = [row['passed'] for row in rows if row['category'] == category]
         print(f'  category {category:<3} pass rate {np.mean(in_category):.3f} '
               f'({len(in_category)} episodes)')
@@ -152,15 +151,17 @@ def main():
 
     device = torch.device(args.device)
     agent = load_agent(args.checkpoint, device)
-    print('loaded ' + args.checkpoint)
+    stem = os.path.splitext(os.path.abspath(args.checkpoint))[0]
+    output = f'{stem}_eval_{time.strftime("%Y%m%d_%H%M%S")}.csv'
+    print(f'loaded {args.checkpoint}, writing {output}')
 
-    scratch = os.path.join(os.path.dirname(os.path.abspath(args.output)) or '.', '.arenas')
+    scratch = os.path.join(os.path.dirname(stem), '.arenas')
     os.makedirs(scratch, exist_ok=True)
     envs = [AnimalEnv(ENV_PATH, paths, index, args.base_port, args.seed + index,
                       config, shape_rewards=False, scratch_dir=scratch)
             for index in range(args.num_envs)]
     try:
-        with open(args.output, 'w', buffering=1, newline='') as out_file:
+        with open(output, 'w', buffering=1, newline='') as out_file:
             fields = ['scenario', 'category', 'pass_mark', 'episode', 'reward', 'passed',
                       'steps']
             writer = csv.DictWriter(out_file, fieldnames=fields)
