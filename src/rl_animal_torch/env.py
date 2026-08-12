@@ -75,13 +75,8 @@ class AnimalEnv:
         self.stacker = Stacker(config)
         self.arena_time = arena.read_arena_time(open(arena_paths[0]).read())
 
-        if 'AAI4_LOG_DIR' in os.environ:
-            log_folder = os.environ['AAI4_LOG_DIR']
-        else:
-            log_folder = ''
         self.env = AnimalAIEnvironment(
             file_name=env_path,
-            log_folder=log_folder,
             worker_id=worker_id,
             base_port=base_port,
             seed=seed,
