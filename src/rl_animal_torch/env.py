@@ -1,4 +1,3 @@
-"""One Animal-AI v4 instance, presenting the stacked frames and velocities the network takes."""
 import os
 import random
 from collections import deque
@@ -38,9 +37,11 @@ class Stacker:
 
     @staticmethod
     def to_raw_velocity(vector):
+        # v4's vector observation is [health, vx, vy, vz, px, py, pz]
         return np.asarray(vector[1:4], dtype=np.float32)
 
     def to_frame(self, camera):
+        # v4 sends CHW float in [0, 1]; the network takes uint8 HWC
         return np.asarray(np.transpose(camera, (1, 2, 0)) * 255.0, dtype=np.uint8)
 
     def reset(self, camera, vector, arena_time):
@@ -143,6 +144,7 @@ class AnimalEnv:
         '''
         self.env.set_actions(self.behavior, self.action_tuple_class(
             continuous=np.zeros((1, 0), dtype=np.float32),
+            # v4's two 3-way branches, in the order the flattened Discrete(9) assumed
             discrete=np.array([[action // 3, action % 3]], dtype=np.int32)))
         self.env.step()
 

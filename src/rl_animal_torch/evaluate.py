@@ -1,8 +1,3 @@
-"""Score a checkpoint on the competition scenarios.
-
-    uv run evaluate --env-path /path/to/animalAI.x86_64 \
-        --checkpoint nn/20260812-213000_best.pt --output results.csv
-"""
 import argparse
 import csv
 import os
@@ -128,6 +123,7 @@ def evaluate(envs, agent, tasks, writer, config, device, log_every):
             row = {'scenario': os.path.basename(path), 'category': category_of(path),
                    'pass_mark': pass_mark[index], 'episode': episode,
                    'reward': reward[index],
+                   # a scenario is passed when the raw episode reward reaches its pass_mark
                    'passed': int(reward[index] >= pass_mark[index]),
                    'steps': steps[index]}
             rows.append(row)

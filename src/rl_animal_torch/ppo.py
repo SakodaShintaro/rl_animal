@@ -1,4 +1,3 @@
-"""PPO with a recurrent policy."""
 import time
 from collections import deque
 
@@ -23,8 +22,8 @@ def format_duration(seconds):
 
 def swap_and_flatten(array):
     '''
-    [steps, actors, ...] -> [actors * steps, ...], which puts each environment's steps
-    next to each other.
+    [steps, actors, ...] -> [actors * steps, ...]: every contiguous run of seq_len entries
+    then belongs to one environment, which is what the recurrent update assumes.
     '''
     shape = array.shape
     return array.swapaxes(0, 1).reshape(shape[0] * shape[1], *shape[2:])
@@ -158,6 +157,7 @@ class PPOTrainer:
                 swap_and_flatten(np.asarray(steps['neglogpacs'], dtype=np.float32)),
                 device=self.device),
             returns=torch.as_tensor(swap_and_flatten(returns), device=self.device),
+            # one recurrent state per sequence, the one recorded at its first step
             states=torch.as_tensor(flat['states'][::config.seq_len], device=self.device))
 
     def update(self, rollout):

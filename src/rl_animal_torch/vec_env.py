@@ -1,4 +1,3 @@
-"""Several Animal-AI instances in worker processes, stepped in lockstep."""
 import multiprocessing as mp
 import os
 import tempfile
@@ -48,6 +47,7 @@ class VecEnv:
         self.processes = []
         for index in range(num_actors):
             parent, child = context.Pipe()
+            # an instance serves on base_port + worker_id, so the index has to be unique
             process = context.Process(
                 target=worker_main,
                 args=(child, env_path, arena_paths, index, base_port, seed + index,

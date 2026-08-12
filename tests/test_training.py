@@ -2,13 +2,13 @@
 import numpy as np
 import torch
 
-from rl_animal_torch.config import TRAINING
+from rl_animal_torch.config import TrainingConfig
 from rl_animal_torch.env import observation_shapes
 from rl_animal_torch.network import LSTM_UNITS, AnimalAgent
 from rl_animal_torch.ppo import PPOTrainer, format_duration, swap_and_flatten
 
-LIGHT = type(TRAINING)(**dict(vars(TRAINING), num_actors=4, steps_num=16, minibatch_size=32,
-                            mini_epochs=2, seq_len=8, max_epochs=2))
+LIGHT = TrainingConfig(num_actors=4, steps_num=16, minibatch_size=32, mini_epochs=2,
+                       seq_len=8, max_epochs=2)
 
 
 class NoiseVecEnv:

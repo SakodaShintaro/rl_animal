@@ -1,4 +1,3 @@
-"""The policy: a residual convolutional tower, a layer-normalized LSTM, and heads."""
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -168,6 +167,7 @@ class AnimalAgent(nn.Module):
             out = stage['block1'](out)
             out = stage['block2'](out)
         out = F.elu(out)
+        # back to NHWC before flattening: that is the order the dense layer was trained in
         return out.permute(0, 2, 3, 1).reshape(out.shape[0], -1)
 
     def forward(self, visual, vels, state, dones, env_num):
@@ -182,6 +182,7 @@ class AnimalAgent(nn.Module):
                             F.elu(self.visual_hidden(flat))], dim=-1)
         hidden = F.elu(self.joint_hidden(hidden))
 
+        # the batch is environment-major: environment e at step t sits at e * steps_num + t
         sequence = hidden.reshape(env_num, steps_num, -1).unbind(dim=1)
         mask_sequence = dones.to(hidden.dtype).reshape(env_num, steps_num).unbind(dim=1)
         outputs, lstm_state = self.lstm(sequence, state, mask_sequence)

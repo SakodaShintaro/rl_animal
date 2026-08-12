@@ -107,5 +107,4 @@ venv.bak/
 networks.zip
 nn/
 
-# TensorBoard output from new runs (already committed runs stay tracked)
-runs/
+results/
