@@ -4,10 +4,8 @@
         --arenas configs/learning/stage3 \
         --run-name v4_torch
 
-Restoring the weights of the TensorFlow run is possible with --init-weights, pointing at
-the npz export_tf_reference.py wrote; the network is numerically the same, so it is a
-legitimate starting point rather than a fresh network. Continuing an interrupted run of
-this trainer instead takes --restore with one of its own checkpoints.
+Training starts from a fresh network. Continuing an interrupted run takes --restore with
+one of this trainer's own checkpoints.
 """
 import argparse
 import os
@@ -18,7 +16,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from rl_animal_torch import arena
 from rl_animal_torch.config import CONFIGS, EnvConfig
-from rl_animal_torch.network import AnimalAgent, load_from_reference
+from rl_animal_torch.network import AnimalAgent
 from rl_animal_torch.ppo import PPOTrainer
 from rl_animal_torch.vec_env import VecEnv
 
@@ -41,8 +39,6 @@ def parse_args():
                         help='override the config, for a short run')
     parser.add_argument('--max-epochs', default=None, type=int,
                         help='override the config, for a short run')
-    parser.add_argument('--init-weights', default=None,
-                        help='npz of TensorFlow weights to start from')
     parser.add_argument('--restore', default=None, help='checkpoint of this trainer')
     return parser.parse_args()
 
@@ -63,7 +59,7 @@ def main():
     cannot build hangs it silently, and the workers draw levels at random on every reset,
     so one bad file stalls the whole run sooner or later.
     '''
-    arena_paths = arena.collect(args.arenas, refuse_broken_colours=True)
+    arena_paths = arena.collect(args.arenas, refuse_broken_colors=True)
     print('%d arena files, all accepted' % len(arena_paths))
 
     env_config = EnvConfig()
@@ -72,11 +68,7 @@ def main():
              config.num_actors * config.steps_num, config.max_epochs,
              config.num_actors * config.steps_num * config.max_epochs))
 
-    if args.init_weights is not None:
-        agent = load_from_reference(args.init_weights)
-        print('initialised from ' + args.init_weights)
-    else:
-        agent = AnimalAgent()
+    agent = AnimalAgent()
 
     os.makedirs(args.checkpoint_dir, exist_ok=True)
     vec_env = VecEnv(args.env_path, arena_paths, config.num_actors, args.base_port,

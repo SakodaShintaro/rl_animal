@@ -22,9 +22,7 @@ train = "rl_animal_torch.train:main"
 evaluate = "rl_animal_torch.evaluate:main"
 
 [project.optional-dependencies]
-# Reading the weights out of the TensorFlow checkpoint needs nothing but numpy, because
-# export_tf_reference.py does the extraction inside the TensorFlow container.
-dev = ["ruff"]
+dev = ["pytest", "ruff"]
 
 [build-system]
 requires = ["hatchling"]
@@ -58,3 +56,9 @@ src = ["src"]
 
 [tool.ruff.lint]
 select = ["I", "F"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# The Animal-AI tests need the player binary, which is not part of the repository; they skip
+# themselves unless AAI4_ENV_PATH points at it.
+addopts = "-q"

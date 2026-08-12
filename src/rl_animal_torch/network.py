@@ -1,12 +1,10 @@
-"""The trained policy network in PyTorch, loading the TensorFlow 1.15 checkpoint.
+"""The policy network: a residual convolutional tower, a layer-normalized LSTM, and heads.
 
-networks.animal_a2c_network_lstm6 is the architecture the released checkpoints were
-trained with, and TensorFlow 1.15 only runs on this GPU generation through NVIDIA's
-container image, which is not distributed as a wheel. This is the same network built with
-PyTorch so that inference no longer depends on that image.
-
-verify_torch_parity.py checks this against a reference forward pass dumped by
-export_tf_reference.py. The things that have to be right, and are easy to get wrong:
+This is the architecture of the agent that won the NeurIPS 2019 Animal AI Olympics, built
+in PyTorch. It was ported from the original TensorFlow 1.15 implementation and checked
+against it to a relative 1e-06 before that implementation was removed; the details below
+are the ones that had to be right for the two to agree, and are worth keeping in mind if
+the network is ever changed.
 
 - TensorFlow flattens NHWC, so the feature map has to be permuted back to NHWC before
   being flattened, or the 4608-wide dense layer sees its inputs in the wrong order.
@@ -14,17 +12,14 @@ export_tf_reference.py. The things that have to be right, and are easy to get wr
   max pools (84 -> 42 and 42 -> 21 both need one row and column, and TensorFlow puts it
   at the bottom and right). nn.MaxPool2d's symmetric padding gives the same output size
   but shifts every pixel.
-- The layer-normalised LSTM normalises the input and recurrent contributions separately,
+- The layer-normalized LSTM normalizes the input and recurrent contributions separately,
   over the whole 4 * units axis rather than per gate, adds a third bias afterwards, and
-  normalises the cell state again inside the output gate. Its gate order is i, f, o, u.
+  normalizes the cell state again inside the output gate. Its gate order is i, f, o, u.
 - A batch of batch_num observations is laid out environment-major: the entry for
   environment e at step t is at e * steps_num + t.
 
-The action is not reproduced here. models.LSTMModelA2C draws it with a Gumbel-max over a
-TensorFlow random tensor, so sampling can only agree in distribution; callers that need
-the same decisions should sample from these logits themselves.
+Actions are not drawn here; the caller samples from the logits.
 """
-import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -110,8 +105,8 @@ class FixupAttentionBlock(nn.Module):
 class LayerNormLSTMCell(nn.Module):
     '''
     networks.lnlstm. The gates are ordered i, f, o, u, the input and recurrent
-    contributions are normalised separately over the whole 4 * units axis, and the cell
-    state is normalised again before the output gate.
+    contributions are normalized separately over the whole 4 * units axis, and the cell
+    state is normalized again before the output gate.
     '''
     def __init__(self, input_size, units):
         super(LayerNormLSTMCell, self).__init__()
@@ -127,7 +122,7 @@ class LayerNormLSTMCell(nn.Module):
         self.bc = nn.Parameter(torch.zeros(units))
 
     @staticmethod
-    def normalise(x, gain, bias):
+    def normalize(x, gain, bias):
         mean = x.mean(dim=1, keepdim=True)
         variance = x.var(dim=1, unbiased=False, keepdim=True)
         return (x - mean) / torch.sqrt(variance + LAYER_NORM_EPSILON) * gain + bias
@@ -143,12 +138,12 @@ class LayerNormLSTMCell(nn.Module):
             keep = (1.0 - mask).unsqueeze(1)
             cell = cell * keep
             hidden = hidden * keep
-            z = (self.normalise(x.matmul(self.wx), self.gx, self.bx)
-                 + self.normalise(hidden.matmul(self.wh), self.gh, self.bh)
+            z = (self.normalize(x.matmul(self.wx), self.gx, self.bx)
+                 + self.normalize(hidden.matmul(self.wh), self.gh, self.bh)
                  + self.b)
             i, f, o, u = torch.split(z, self.units, dim=1)
             cell = torch.sigmoid(f) * cell + torch.sigmoid(i) * torch.tanh(u)
-            hidden = torch.sigmoid(o) * torch.tanh(self.normalise(cell, self.gc, self.bc))
+            hidden = torch.sigmoid(o) * torch.tanh(self.normalize(cell, self.gc, self.bc))
             outputs.append(hidden)
 
         return outputs, torch.cat([cell, hidden], dim=1)
@@ -225,72 +220,3 @@ class AnimalAgent(nn.Module):
         lstm_out = torch.stack(outputs, dim=1).reshape(-1, LSTM_UNITS)
 
         return self.logits_head(lstm_out), self.value_head(lstm_out), lstm_state
-
-
-def load_tf_weights(agent, weights):
-    '''
-    Copies the TensorFlow variables in `weights`, keyed by variable name without the
-    ':0', into the module. Convolution kernels are stored as [H, W, in, out] and dense
-    kernels as [in, out], both of which PyTorch wants transposed.
-
-    The channel attention convolutions are the anonymous `conv2d`, `conv2d_1`, ... in the
-    checkpoint, numbered in creation order: the tower visits the depths in order and each
-    of its two blocks builds its own pair, so the pairs run rb11, rb21, rb12, rb22, rb13,
-    rb23, rb14, rb24. The residual convolutions instead carry the block name, as
-    res1/rb1<layer> and res2/rb1<layer>.
-    '''
-    def conv_kernel(name):
-        return torch.as_tensor(np.transpose(weights[name], (3, 2, 0, 1)).copy())
-
-    def dense_kernel(name):
-        return torch.as_tensor(np.transpose(weights[name], (1, 0)).copy())
-
-    def vector(name):
-        return torch.as_tensor(weights[name].copy())
-
-    with torch.no_grad():
-        attention_index = 0
-        for layer, (stage, depth) in enumerate(zip(agent.tower, DEPTHS), start=1):
-            stage['conv'].weight.copy_(conv_kernel('agent/layer_%d/kernel' % layer))
-            stage['conv'].bias.copy_(vector('agent/layer_%d/bias' % layer))
-            for block_name, block in (('rb1%d' % layer, stage['block1']),
-                                      ('rb2%d' % layer, stage['block2'])):
-                block.res1.weight.copy_(conv_kernel('agent/res1/%s/kernel' % block_name))
-                block.res2.weight.copy_(conv_kernel('agent/res2/%s/kernel' % block_name))
-                for scalar in ('bias0', 'bias1', 'bias2', 'bias3', 'multiplier'):
-                    getattr(block, scalar).copy_(
-                        vector('agent/%s/%s' % (block_name, scalar)))
-
-                reduce_name = 'agent/conv2d' if attention_index == 0 \
-                    else 'agent/conv2d_%d' % attention_index
-                expand_name = 'agent/conv2d_%d' % (attention_index + 1)
-                block.attention.reduce.weight.copy_(conv_kernel(reduce_name + '/kernel'))
-                block.attention.expand.weight.copy_(conv_kernel(expand_name + '/kernel'))
-                attention_index += 2
-
-        for module, name in ((agent.vels_hidden, 'agent/dense'),
-                             (agent.visual_hidden, 'agent/dense_1'),
-                             (agent.joint_hidden, 'agent/dense_2'),
-                             (agent.value_head, 'agent/dense_3'),
-                             (agent.logits_head, 'agent/dense_4')):
-            module.weight.copy_(dense_kernel(name + '/kernel'))
-            module.bias.copy_(vector(name + '/bias'))
-
-        for parameter in ('wx', 'gx', 'bx', 'wh', 'gh', 'bh', 'b', 'gc', 'bc'):
-            getattr(agent.lstm, parameter).copy_(
-                vector('agent/lstm_ac/lnlstm/%s' % parameter))
-
-    return agent
-
-
-def load_from_reference(path, dtype=torch.float32):
-    '''
-    Builds the agent from the weights export_tf_reference.py wrote.
-    '''
-    dump = np.load(path)
-    weights = {key[len('weight/'):]: dump[key] for key in dump.files
-               if key.startswith('weight/')}
-    agent = AnimalAgent().to(dtype)
-    load_tf_weights(agent, weights)
-    agent.eval()
-    return agent

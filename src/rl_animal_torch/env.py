@@ -93,7 +93,7 @@ class Stacker:
 
 class AnimalEnv:
     '''
-    reset() picks one of `arena_paths` at random with a randomised episode length, the way
+    reset() picks one of `arena_paths` at random with a randomized episode length, the way
     the original training did, and returns (visual uint8 HWC, velocity float32).
     '''
     def __init__(self, env_path, arena_paths, worker_id, base_port, seed, config,

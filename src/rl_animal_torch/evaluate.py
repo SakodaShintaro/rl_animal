@@ -26,7 +26,7 @@ import torch.nn.functional as F
 from rl_animal_torch import arena
 from rl_animal_torch.config import EnvConfig
 from rl_animal_torch.env import AnimalEnv
-from rl_animal_torch.network import AnimalAgent, load_from_reference
+from rl_animal_torch.network import AnimalAgent
 
 
 def parse_args():
@@ -34,7 +34,7 @@ def parse_args():
     parser.add_argument('--env-path', required=True, help='v4 animalAI.x86_64')
     parser.add_argument('--configs', required=True, help='directory of scenario yaml files')
     parser.add_argument('--checkpoint', required=True,
-                        help='a .pt from train, or an npz of TensorFlow weights')
+                        help='a checkpoint written by train')
     parser.add_argument('--output', required=True, help='csv to write')
     parser.add_argument('--num-envs', default=12, type=int)
     parser.add_argument('--episodes', default=1, type=int, help='episodes per scenario')
@@ -47,9 +47,6 @@ def parse_args():
 
 
 def load_agent(path, device):
-    if path.endswith('.npz'):
-        return load_from_reference(path).to(device).eval()
-
     agent = AnimalAgent()
     state = torch.load(path, map_location=device)
     agent.load_state_dict(state['model'] if 'model' in state else state)
@@ -166,7 +163,7 @@ def main():
     args = parse_args()
     config = EnvConfig()
 
-    paths = arena.collect(args.configs, refuse_broken_colours=False)[::args.stride]
+    paths = arena.collect(args.configs, refuse_broken_colors=False)[::args.stride]
     print('scenarios: %d, episodes each: %d, envs: %d'
           % (len(paths), args.episodes, args.num_envs))
 

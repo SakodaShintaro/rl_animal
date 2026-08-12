@@ -10,7 +10,7 @@ The details that make this the same algorithm rather than a generic PPO:
   over minibatch_size / seq_len sequences of seq_len steps.
 - Both the policy and the value loss are clipped, and the maximum of clipped and
   unclipped is taken. The value loss is halved again by critic_coef * 0.5.
-- Advantages are normalised across the whole batch, before it is split.
+- Advantages are normalized across the whole batch, before it is split.
 - Gradients are clipped by global norm.
 """
 import time

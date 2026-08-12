@@ -9,7 +9,7 @@ neither is visible from python: the symptoms are a connection timeout and a play
 growing by gigabytes. One arena wrote 4.75 million exceptions into 3.8 GB before it was
 caught, which is why they are refused up front.
 
-- An item name the build does not have. The deserialised configuration ends up empty
+- An item name the build does not have. The deserialized configuration ends up empty
   because ArenasConfigurations.UpdateWithConfigurationsReceived neither null-checks nor
   catches, and TrainingArena.SetNextArenaID then divides by a zero arena count on every
   FixedUpdate. `GoodMulti`, a typo for GoodGoalMulti in one training level, did this; the
@@ -20,7 +20,7 @@ caught, which is why they are refused up front.
   placed at random; the way to ask v4 for that is an explicit -1 coordinate.
 
 `null_list_keys` finds a third suspicious shape, a list key written with no value, which
-deserialises to null rather than to the C# side's default empty list. It is reported by
+deserializes to null rather than to the C# side's default empty list. It is reported by
 the tooling but not refused: the 900 released competition scenarios contain nine of them
 and run, so on its own it is survivable.
 """
@@ -106,9 +106,9 @@ def item_blocks(lines):
         yield lines[start:end]
 
 
-def broken_colours(raw):
+def broken_colors(raw):
     '''
-    A `colors:` written with no value deserialises to null instead of leaving the C# side's
+    A `colors:` written with no value deserializes to null instead of leaving the C# side's
     default empty list, and Spawnable's constructor iterates it. Verified by restoring the
     single line into two training levels: with it the player dies, without it both run.
 
@@ -152,7 +152,7 @@ def validate(raw, path):
 
 def write_with_time(raw, arena_time, directory):
     '''
-    v4 reads the arena as text, so a randomised episode length has to be written out as a
+    v4 reads the arena as text, so a randomized episode length has to be written out as a
     file rather than set on a parsed config object the way the v1 training did.
     '''
     patched = re.sub(r'^([ \t]*)t:[ \t]*[\d.]+', r'\g<1>t: %d' % arena_time, raw,
@@ -163,12 +163,12 @@ def write_with_time(raw, arena_time, directory):
     return path
 
 
-def collect(directory, refuse_broken_colours):
+def collect(directory, refuse_broken_colors):
     '''
     Every arena file in a directory, checked.
 
     What hangs the player is always refused: one bad draw stalls training for good, and the
-    workers draw levels at random on every reset. A null colour list is only refused when
+    workers draw levels at random on every reset. A null color list is only refused when
     asked for, because it does not always hang and because the released competition
     scenarios have to be runnable as written; scoring them means accepting that nine of the
     900 are built wrong. Training levels are ours to fix, so there it is an error.
@@ -182,18 +182,18 @@ def collect(directory, refuse_broken_colours):
     for path in paths:
         raw = open(path).read()
         validate(raw, path)
-        keys = broken_colours(raw)
+        keys = broken_colors(raw)
         if len(keys) > 0:
             broken.append((path, keys))
 
     if len(broken) > 0:
-        if refuse_broken_colours:
+        if refuse_broken_colors:
             path, keys = broken[0]
-            raise ValueError('%s writes %s with no value, which deserialises to null and '
+            raise ValueError('%s writes %s with no value, which deserializes to null and '
                              'kills the v4 player inside initVec3sFromRGBs; delete the key. '
                              '%d file(s) in this directory do it.'
                              % (path, ', '.join(keys), len(broken)))
-        print('warning: %d arena(s) write a colour list with no value, so the v4 player '
+        print('warning: %d arena(s) write a color list with no value, so the v4 player '
               'builds them wrong: %s'
               % (len(broken), ', '.join(os.path.basename(path) for path, _ in broken)))
 

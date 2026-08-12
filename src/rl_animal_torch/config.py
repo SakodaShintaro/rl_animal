@@ -93,7 +93,7 @@ class EnvConfig:
     timescale: int = 300
     target_frame_rate: int = -1
     '''
-    The episode length randomisation the original training applied to every new level.
+    The episode length randomization the original training applied to every new level.
     '''
     min_time: int = 200
     max_time: int = 1100

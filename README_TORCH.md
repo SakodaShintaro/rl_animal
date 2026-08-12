@@ -85,9 +85,9 @@ without being obviously broken.
   two max pools (84 to 42 and 42 to 21 each need one row and column, placed at the bottom
   and right). `nn.MaxPool2d`'s symmetric padding gives the same output size and shifts
   every pixel.
-- The layer-normalised LSTM normalises the input and recurrent contributions separately
+- The layer-normalized LSTM normalizes the input and recurrent contributions separately
   over the whole `4 * units` axis rather than per gate, adds a third bias afterwards, and
-  normalises the cell state again inside the output gate. Its gate order is i, f, o, u.
+  normalizes the cell state again inside the output gate. Its gate order is i, f, o, u.
 - A batch is environment-major: environment `e` at step `t` is at `e * steps_num + t`.
 - Actions cannot match. The original samples with a Gumbel-max over a TensorFlow random
   tensor, so only the distribution carries over; the port samples with `torch.multinomial`.
@@ -97,7 +97,7 @@ without being obviously broken.
 `arena.collect` refuses a level before any Unity instance is launched, because two ways of
 writing an arena make the v4 player hang rather than report anything:
 
-- A list key with no value (`colors:` followed by another key) deserialises to null and
+- A list key with no value (`colors:` followed by another key) deserializes to null and
   overwrites the C# side's default empty list. `initVec3sFromRGBs` iterates it, and
   `ArenasConfigurations.UpdateWithConfigurationsReceived` neither null-checks nor catches,
   so the configuration dictionary stays empty and `TrainingArena.SetNextArenaID` divides by
@@ -106,6 +106,6 @@ writing an arena make the v4 player hang rather than report anything:
   `positions[0]` unconditionally. In v1 an item with no positions was placed at random; the
   way to ask v4 for that is `!Vector3 {x: -1, y: 0, z: -1}`.
 
-Both were accepted by v1, which parsed the YAML in python and normalised null to `[]`.
+Both were accepted by v1, which parsed the YAML in python and normalized null to `[]`.
 Neither is visible from python: the symptoms are a connection timeout and a player log
 growing by gigabytes. `configs/learning/stage3` has been corrected for both.
