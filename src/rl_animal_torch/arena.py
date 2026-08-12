@@ -81,10 +81,17 @@ def null_list_keys(lines):
             continue
         indent = len(line) - len(line.lstrip())
         for following in lines[index + 1:]:
-            if len(following.strip()) == 0:
+            content = following.strip()
+            '''
+            Blank lines and comments say nothing about whether the key has a value. Nine of
+            the released competition scenarios write a long run of commented-out !RGB
+            entries between `colors:` and the entries that are still live, and reading the
+            first comment as the answer calls a perfectly good list null.
+            '''
+            if len(content) == 0 or content.startswith('#'):
                 continue
             following_indent = len(following) - len(following.lstrip())
-            if following.lstrip().startswith('-') and following_indent >= indent:
+            if content.startswith('-') and following_indent >= indent:
                 break
             yield stripped[:-1], index
             break
