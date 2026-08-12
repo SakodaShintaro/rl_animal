@@ -15,7 +15,7 @@ import argparse
 import numpy as np
 import torch
 
-import torch_agent
+from rl_animal_torch import network as torch_agent
 
 '''
 The float32 reference carries roughly 1e-7 of relative error per operation and this
@@ -53,12 +53,12 @@ def main():
 
     worst = 0.0
     for dtype, name in ((torch.float64, 'float64'), (torch.float32, 'float32')):
-        agent = torch_agent.load_from_reference(args.reference, args.env_num,
-                                                args.steps_num, dtype=dtype)
+        agent = torch_agent.load_from_reference(args.reference, dtype=dtype)
         vels = torch.as_tensor(dump['input/vels']).to(dtype)
         state = torch.as_tensor(dump['input/states']).to(dtype)
         with torch.no_grad():
-            logits, value, lstm_state = agent(visual, vels, state, dones.to(dtype))
+            logits, value, lstm_state = agent(visual, vels, state, dones.to(dtype),
+                                              args.env_num)
 
         print('--- port in %s against the float32 reference' % name)
         worst = max(worst, compare('logits', dump['output/logits'], logits.numpy()))

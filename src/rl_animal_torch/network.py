@@ -159,11 +159,8 @@ class AnimalAgent(nn.Module):
     The whole network. forward takes the observations the v1 wrappers produced: visual
     uint8 in NHWC and the stacked velocity vector.
     '''
-    def __init__(self, env_num, steps_num):
+    def __init__(self):
         super(AnimalAgent, self).__init__()
-        self.env_num = env_num
-        self.steps_num = steps_num
-
         self.tower = nn.ModuleList()
         in_channels = VISUAL_CHANNELS
         for depth in DEPTHS:
@@ -186,8 +183,8 @@ class AnimalAgent(nn.Module):
         self.value_head = nn.Linear(LSTM_UNITS, 1)
         self.logits_head = nn.Linear(LSTM_UNITS, ACTIONS_NUM)
 
-    def initial_state(self, dtype=torch.float32):
-        return torch.zeros(self.env_num, 2 * LSTM_UNITS, dtype=dtype)
+    def initial_state(self, env_num, dtype=torch.float32, device=None):
+        return torch.zeros(env_num, 2 * LSTM_UNITS, dtype=dtype, device=device)
 
     def features(self, visual):
         '''
@@ -206,7 +203,13 @@ class AnimalAgent(nn.Module):
         '''
         return out.permute(0, 2, 3, 1).reshape(out.shape[0], -1)
 
-    def forward(self, visual, vels, state, dones):
+    def forward(self, visual, vels, state, dones, env_num):
+        '''
+        The batch is laid out environment-major: the entry for environment e at step t is
+        at e * steps_num + t, which is what batch_to_seq assumed and what the rollout
+        buffer reproduces when it flattens.
+        '''
+        steps_num = visual.shape[0] // env_num
         flat = self.features(visual)
         hidden = torch.cat([F.elu(self.vels_hidden(vels)),
                             F.elu(self.visual_hidden(flat))], dim=-1)
@@ -216,8 +219,8 @@ class AnimalAgent(nn.Module):
         batch_to_seq reshapes the environment-major batch into (env_num, steps_num) and
         hands the steps over one at a time.
         '''
-        sequence = hidden.reshape(self.env_num, self.steps_num, -1).unbind(dim=1)
-        mask_sequence = dones.to(hidden.dtype).reshape(self.env_num, self.steps_num).unbind(dim=1)
+        sequence = hidden.reshape(env_num, steps_num, -1).unbind(dim=1)
+        mask_sequence = dones.to(hidden.dtype).reshape(env_num, steps_num).unbind(dim=1)
         outputs, lstm_state = self.lstm(sequence, state, mask_sequence)
         lstm_out = torch.stack(outputs, dim=1).reshape(-1, LSTM_UNITS)
 
@@ -280,14 +283,14 @@ def load_tf_weights(agent, weights):
     return agent
 
 
-def load_from_reference(path, env_num, steps_num, dtype=torch.float32):
+def load_from_reference(path, dtype=torch.float32):
     '''
     Builds the agent from the weights export_tf_reference.py wrote.
     '''
     dump = np.load(path)
     weights = {key[len('weight/'):]: dump[key] for key in dump.files
                if key.startswith('weight/')}
-    agent = AnimalAgent(env_num, steps_num).to(dtype)
+    agent = AnimalAgent().to(dtype)
     load_tf_weights(agent, weights)
     agent.eval()
     return agent

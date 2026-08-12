@@ -1,0 +1,56 @@
+[project]
+name = "rl_animal_torch"
+version = "0.1.0"
+description = "The Animal-AI Olympics winning agent, in PyTorch against the v4 environment"
+requires-python = ">=3.12,<3.13"
+readme = "README.md"
+license = "MIT"
+dependencies = [
+    "animalai==5.0.1",
+    "mlagents-envs==1.0.0",
+    "numpy",
+    "tensorboard",
+    "torch>=2.7",
+]
+
+[project.scripts]
+train = "rl_animal_torch.train:main"
+evaluate = "rl_animal_torch.evaluate:main"
+
+[project.optional-dependencies]
+# Reading the weights out of the TensorFlow checkpoint needs nothing but numpy, because
+# export_tf_reference.py does the extraction inside the TensorFlow container.
+dev = ["ruff"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rl_animal_torch"]
+
+[tool.uv]
+# animalai pins protobuf==3.20.3 while mlagents-envs pins protobuf<3.20, which is
+# unsatisfiable as written. 3.20.3 is what the Animal-AI v4 player was built against and
+# what its own package asks for, so that is the one to force; it ships a pure-python
+# wheel, so it installs on 3.12 even though its extension modules stop at 3.10.
+override-dependencies = [
+    "protobuf==3.20.3",
+    "numpy>=1.26.4",
+    "grpcio>=1.60",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+
+[tool.ruff]
+line-length = 100
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["I", "F"]
