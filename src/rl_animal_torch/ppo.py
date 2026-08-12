@@ -20,8 +20,6 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from rl_animal_torch.network import LSTM_UNITS
-
 
 def format_duration(seconds):
     '''
