@@ -4,7 +4,7 @@ import torch
 
 from rl_animal_torch.config import TrainingConfig
 from rl_animal_torch.env import observation_shapes
-from rl_animal_torch.network import LSTM_UNITS, AnimalAgent
+from rl_animal_torch.network import LSTM_UNITS
 from rl_animal_torch.ppo import PPOTrainer, format_duration, swap_and_flatten
 
 LIGHT = TrainingConfig(num_actors=4, steps_num=16, minibatch_size=32, mini_epochs=2,
@@ -45,8 +45,8 @@ class SilentLogger:
 
 
 def make_trainer(config=LIGHT):
-    return PPOTrainer(AnimalAgent(), NoiseVecEnv(config.num_actors), config,
-                      torch.device('cpu'), SilentLogger())
+    return PPOTrainer(NoiseVecEnv(config.num_actors), config, torch.device('cpu'),
+                      SilentLogger())
 
 
 def test_swap_and_flatten_is_environment_major():

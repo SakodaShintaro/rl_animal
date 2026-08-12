@@ -7,11 +7,11 @@ import numpy as np
 from rl_animal_torch.env import AnimalEnv
 
 
-def worker_main(connection, env_path, arena_paths, worker_id, base_port, seed, config,
+def worker_main(connection, env_path, arena_paths, worker_id, base_port, seed,
                 shape_rewards):
     scratch_dir = tempfile.mkdtemp(prefix='aai_arenas_')
-    env = AnimalEnv(env_path, arena_paths, worker_id, base_port, seed, config,
-                    shape_rewards, scratch_dir)
+    env = AnimalEnv(env_path, arena_paths, worker_id, base_port, seed, shape_rewards,
+                    scratch_dir)
     try:
         connection.send(env.reset())
         while True:
@@ -34,8 +34,7 @@ def worker_main(connection, env_path, arena_paths, worker_id, base_port, seed, c
 
 
 class VecEnv:
-    def __init__(self, env_path, arena_paths, num_actors, base_port, seed, config,
-                 shape_rewards):
+    def __init__(self, env_path, arena_paths, num_actors, base_port, seed, shape_rewards):
         '''
         spawn rather than fork: the parent holds CUDA context and file descriptors that a
         forked child must not inherit.
@@ -49,7 +48,7 @@ class VecEnv:
             process = context.Process(
                 target=worker_main,
                 args=(child, env_path, arena_paths, index, base_port, seed + index,
-                      config, shape_rewards),
+                      shape_rewards),
                 daemon=True)
             process.start()
             child.close()

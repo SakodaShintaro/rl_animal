@@ -62,7 +62,8 @@ def report(rows):
 
 
 @torch.no_grad()
-def evaluate(envs, agent, tasks, writer, config, device, log_every):
+def evaluate(envs, agent, tasks, writer, device, log_every):
+    config = EnvConfig()
     num_envs = len(envs)
     state = agent.initial_state(num_envs, device=device)
     cursor = [0] * num_envs
@@ -139,8 +140,6 @@ def evaluate(envs, agent, tasks, writer, config, device, log_every):
 
 def main():
     args = parse_args()
-    config = EnvConfig()
-
     paths = arena.collect(args.configs)[::args.stride]
     print(f'scenarios: {len(paths)}, envs: {args.num_envs}')
 
@@ -153,7 +152,7 @@ def main():
     scratch = os.path.join(os.path.dirname(stem), '.arenas')
     os.makedirs(scratch, exist_ok=True)
     envs = [AnimalEnv(ENV_PATH, paths, index, args.base_port, args.seed + index,
-                      config, shape_rewards=False, scratch_dir=scratch)
+                      shape_rewards=False, scratch_dir=scratch)
             for index in range(args.num_envs)]
     try:
         with open(output, 'w', buffering=1, newline='') as out_file:
@@ -161,7 +160,7 @@ def main():
             writer = csv.DictWriter(out_file, fieldnames=fields)
             writer.writeheader()
             rows = evaluate(envs, agent, build_tasks(paths, args.num_envs),
-                            writer, config, device, 25)
+                            writer, device, 25)
     finally:
         for env in envs:
             env.close()

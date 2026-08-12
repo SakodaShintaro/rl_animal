@@ -64,8 +64,9 @@ class AnimalEnv:
     reset() picks one of `arena_paths` at random with a randomized episode length, the way
     the original training did, and returns (visual uint8 HWC, velocity float32).
     '''
-    def __init__(self, env_path, arena_paths, worker_id, base_port, seed, config,
-                 shape_rewards, scratch_dir):
+    def __init__(self, env_path, arena_paths, worker_id, base_port, seed, shape_rewards,
+                 scratch_dir):
+        config = EnvConfig()
         self.config = config
         self.arena_paths = arena_paths
         self.shape_rewards = shape_rewards

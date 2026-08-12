@@ -5,6 +5,8 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+from rl_animal_torch.network import AnimalAgent
+
 
 def format_duration(seconds):
     '''
@@ -45,12 +47,12 @@ class Rollout:
 
 
 class PPOTrainer:
-    def __init__(self, agent, vec_env, config, device, logger):
+    def __init__(self, vec_env, config, device, logger):
         '''
         logger only has to offer log(values, step); train.py passes a wandb-backed one and
         the tests pass one that discards.
         '''
-        self.agent = agent.to(device)
+        self.agent = AnimalAgent().to(device)
         self.vec_env = vec_env
         self.config = config
         self.device = device
