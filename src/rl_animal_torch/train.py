@@ -7,7 +7,7 @@ import torch
 import wandb
 
 from rl_animal_torch import arena
-from rl_animal_torch.config import CONFIGS, EnvConfig
+from rl_animal_torch.config import TRAINING, EnvConfig
 from rl_animal_torch.network import AnimalAgent
 from rl_animal_torch.ppo import PPOTrainer
 from rl_animal_torch.vec_env import VecEnv
@@ -31,9 +31,6 @@ class WandbLogger:
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--env-path', required=True, help='v4 animalAI.x86_64')
-    parser.add_argument('--config', default='stage1', choices=sorted(CONFIGS),
-                        help='stage1 is the winning run; stage2 is what it switched to '
-                             'after 50 million steps')
     parser.add_argument('--checkpoint-dir', default='nn')
     parser.add_argument('--wandb-project', default='rl-animal-torch')
     parser.add_argument('--wandb-mode', default='online',
@@ -52,7 +49,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    config = CONFIGS[args.config]
+    config = TRAINING
     if args.num_actors is not None:
         config = type(config)(**dict(vars(config), num_actors=args.num_actors))
     if args.max_epochs is not None:
@@ -74,7 +71,7 @@ def main():
 
     env_config = EnvConfig()
     batch = config.num_actors * config.steps_num
-    print(f'config {args.config}: {config.num_actors} actors x {config.steps_num} steps = '
+    print(f'{config.num_actors} actors x {config.steps_num} steps = '
           f'{batch} per batch, {config.max_epochs} epochs, '
           f'{batch * config.max_epochs} steps total')
 

@@ -6,10 +6,10 @@ configuration the released checkpoints were trained with, and from the presentat
 num_actors * steps_num = 6144 steps, so 70e6 steps is about 11400 epochs, not the 48000
 the original config carried as an upper bound.
 
-The presentation also describes dropping the entropy coefficient to 0.001, the learning
-rate to 5e-5 and the clipping to 0.1 after the first 50 million steps. That is a second
-stage rather than a schedule; run it by restoring the first stage's checkpoint with the
-second stage's values.
+The presentation also describes dropping the entropy coefficient to 0.001, the learning rate
+to 5e-5 and the clipping to 0.1 after the first 50 million steps. That was a second stage
+rather than a schedule, and it is not reproduced here: this configuration keeps the first
+stage's values for the whole run.
 """
 from dataclasses import dataclass
 
@@ -33,7 +33,7 @@ class TrainingConfig:
     max_epochs: int
 
 
-STAGE1 = TrainingConfig(
+TRAINING = TrainingConfig(
     gamma=0.99,
     lam=0.9,
     learning_rate=1e-4,
@@ -50,29 +50,6 @@ STAGE1 = TrainingConfig(
     seq_len=8,
     max_epochs=11400,
 )
-
-'''
-The values the presentation reports switching to after 50 million steps.
-'''
-STAGE2 = TrainingConfig(
-    gamma=0.99,
-    lam=0.9,
-    learning_rate=5e-5,
-    grad_norm=0.5,
-    entropy_coef=0.001,
-    critic_coef=1.0,
-    e_clip=0.1,
-    clip_value=True,
-    normalize_advantage=True,
-    num_actors=24,
-    steps_num=256,
-    minibatch_size=1536,
-    mini_epochs=4,
-    seq_len=8,
-    max_epochs=11400,
-)
-
-CONFIGS = {'stage1': STAGE1, 'stage2': STAGE2}
 
 
 @dataclass(frozen=True)

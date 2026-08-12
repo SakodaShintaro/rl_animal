@@ -18,7 +18,7 @@ import pytest
 import torch
 
 from rl_animal_torch import arena
-from rl_animal_torch.config import STAGE1, EnvConfig
+from rl_animal_torch.config import TRAINING, EnvConfig
 from rl_animal_torch.env import AnimalEnv, observation_shapes
 from rl_animal_torch.evaluate import build_tasks, evaluate
 from rl_animal_torch.network import AnimalAgent
@@ -76,7 +76,7 @@ def test_light_training(env_path, tmp_path):
     Two instances and two epochs: enough to prove the worker processes, the rollout and the
     update all work against the real player.
     '''
-    config = type(STAGE1)(**dict(vars(STAGE1), num_actors=2, steps_num=16,
+    config = type(TRAINING)(**dict(vars(TRAINING), num_actors=2, steps_num=16,
                                  minibatch_size=16, mini_epochs=1, seq_len=8,
                                  max_epochs=2))
     paths = arena.collect(ARENAS, refuse_broken_colors=True)
