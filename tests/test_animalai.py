@@ -42,11 +42,8 @@ def env_path():
     return path
 
 
-class SilentWriter:
-    def add_scalar(self, *args, **kwargs):
-        pass
-
-    def close(self):
+class SilentLogger:
+    def log(self, values, step):
         pass
 
 
@@ -87,7 +84,7 @@ def test_light_training(env_path, tmp_path):
                      shape_rewards=True)
     try:
         trainer = PPOTrainer(AnimalAgent(), vec_env, config, torch.device('cpu'),
-                             SilentWriter())
+                             SilentLogger())
         before = torch.cat([p.detach().reshape(-1).clone()
                             for p in trainer.agent.parameters()])
         trainer.train(str(tmp_path / 'last.pt'), str(tmp_path / 'best.pt'))

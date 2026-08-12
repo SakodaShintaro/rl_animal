@@ -4,6 +4,8 @@
         --arenas configs/learning/stage3 \
         --run-name v4_torch
 
+Metrics go to wandb; --wandb-mode offline keeps them local, disabled drops them.
+
 Training starts from a fresh network. Continuing an interrupted run takes --restore with
 one of this trainer's own checkpoints.
 """
@@ -12,13 +14,26 @@ import os
 
 import numpy as np
 import torch
-from torch.utils.tensorboard import SummaryWriter
+import wandb
 
 from rl_animal_torch import arena
 from rl_animal_torch.config import CONFIGS, EnvConfig
 from rl_animal_torch.network import AnimalAgent
 from rl_animal_torch.ppo import PPOTrainer
 from rl_animal_torch.vec_env import VecEnv
+
+
+class WandbLogger:
+    """The one method PPOTrainer asks for, over a wandb run.
+
+    The step is the environment frame rather than the epoch, so runs with different batch
+    sizes line up on the x axis.
+    """
+    def __init__(self, run):
+        self.run = run
+
+    def log(self, values, step):
+        self.run.log(values, step=step)
 
 
 def parse_args():
@@ -30,7 +45,9 @@ def parse_args():
                         help='stage1 is the winning run; stage2 is what it switched to '
                              'after 50 million steps')
     parser.add_argument('--checkpoint-dir', default='nn')
-    parser.add_argument('--log-dir', default='runs')
+    parser.add_argument('--wandb-project', default='rl-animal-torch')
+    parser.add_argument('--wandb-mode', default='online',
+                        choices=['online', 'offline', 'disabled'])
     parser.add_argument('--base-port', default=5005, type=int,
                         help='each instance serves on base-port + its index')
     parser.add_argument('--seed', default=0, type=int)
@@ -73,8 +90,10 @@ def main():
     os.makedirs(args.checkpoint_dir, exist_ok=True)
     vec_env = VecEnv(args.env_path, arena_paths, config.num_actors, args.base_port,
                      args.seed, env_config, shape_rewards=True)
-    writer = SummaryWriter(os.path.join(args.log_dir, args.run_name))
-    trainer = PPOTrainer(agent, vec_env, config, torch.device(args.device), writer)
+    run = wandb.init(project=args.wandb_project, name=args.run_name, mode=args.wandb_mode,
+                     config=dict(vars(config), arenas=args.arenas, seed=args.seed))
+    trainer = PPOTrainer(agent, vec_env, config, torch.device(args.device),
+                         WandbLogger(run))
     if args.restore is not None:
         trainer.restore(args.restore)
         print('restored %s at epoch %d' % (args.restore, trainer.epoch))
@@ -85,7 +104,7 @@ def main():
         trainer.train(checkpoint, best)
     finally:
         vec_env.close()
-        writer.close()
+        run.finish()
     print('done, last checkpoint %s' % checkpoint)
 
 

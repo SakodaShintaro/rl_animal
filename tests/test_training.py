@@ -52,17 +52,14 @@ class NoiseVecEnv:
         pass
 
 
-class SilentWriter:
-    def add_scalar(self, *args, **kwargs):
-        pass
-
-    def close(self):
+class SilentLogger:
+    def log(self, values, step):
         pass
 
 
 def make_trainer(config=LIGHT):
     return PPOTrainer(AnimalAgent(), NoiseVecEnv(config.num_actors), config,
-                      torch.device('cpu'), SilentWriter())
+                      torch.device('cpu'), SilentLogger())
 
 
 def test_swap_and_flatten_is_environment_major():

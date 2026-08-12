@@ -62,12 +62,16 @@ class Rollout:
 
 
 class PPOTrainer:
-    def __init__(self, agent, vec_env, config, device, writer):
+    def __init__(self, agent, vec_env, config, device, logger):
+        '''
+        logger only has to offer log(values, step); train.py passes a wandb-backed one and
+        the tests pass one that discards.
+        '''
         self.agent = agent.to(device)
         self.vec_env = vec_env
         self.config = config
         self.device = device
-        self.writer = writer
+        self.logger = logger
         self.optimizer = torch.optim.Adam(self.agent.parameters(), lr=config.learning_rate)
 
         self.batch_size = config.steps_num * config.num_actors
@@ -278,18 +282,17 @@ class PPOTrainer:
             update_time = time.time() - update_start
 
             steps_per_second = self.batch_size / (collect_time + update_time)
-            self.writer.add_scalar('performance/fps', steps_per_second, self.frame)
-            self.writer.add_scalar('performance/play_time', collect_time, self.frame)
-            self.writer.add_scalar('performance/update_time', update_time, self.frame)
-            for name, value in losses.items():
-                self.writer.add_scalar('losses/' + name, value, self.frame)
-            self.writer.add_scalar('epochs', self.epoch, self.frame)
-
             elapsed = time.time() - started
             remaining = (elapsed / epochs_this_session) * (config.max_epochs - self.epoch)
-            self.writer.add_scalar('performance/elapsed_hours', elapsed / 3600.0,
-                                   self.frame)
-            self.writer.add_scalar('performance/eta_hours', remaining / 3600.0, self.frame)
+
+            values = {'epoch': self.epoch,
+                      'performance/steps_per_second': steps_per_second,
+                      'performance/collect_time': collect_time,
+                      'performance/update_time': update_time,
+                      'performance/elapsed_hours': elapsed / 3600.0,
+                      'performance/eta_hours': remaining / 3600.0}
+            for name, value in losses.items():
+                values['losses/' + name] = value
 
             report = ('epoch %d/%d  frame %d  %.0f steps/s  elapsed %s  eta %s  '
                       'actor %.4f  critic %.4f  entropy %.4f'
@@ -298,13 +301,14 @@ class PPOTrainer:
                          losses['actor'], losses['critic'], losses['entropy']))
             if len(self.episode_rewards) > 0:
                 mean_reward = float(np.mean(self.episode_rewards))
-                self.writer.add_scalar('mean_rewards', mean_reward, self.frame)
+                values['mean_reward'] = mean_reward
                 report += '  mean reward %.4f' % mean_reward
                 if mean_reward > best_reward:
                     best_reward = mean_reward
                     self.save(best_checkpoint_path)
                     report += ' (best, saved)'
             print(report, flush=True)
+            self.logger.log(values, self.frame)
 
             self.save(checkpoint_path)
 
