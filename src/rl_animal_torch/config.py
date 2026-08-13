@@ -20,8 +20,7 @@ class TrainingConfig:
     minibatch_size: int = 1536
     mini_epochs: int = 4
     seq_len: int = 8
-    # 70 million steps, which is what the winning run took: 70e6 / (24 * 256)
-    max_epochs: int = 11400
+    max_epochs: int = 2500
 
 
 @dataclass(frozen=True)
