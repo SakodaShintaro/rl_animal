@@ -22,6 +22,7 @@ BASE_PORT = 5005
 
 def parse_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument('exp_name', help='suffix of the wandb run and the result directory')
     parser.add_argument('--wandb_mode', default='online',
                         choices=['online', 'offline', 'disabled'])
     parser.add_argument('--seed', default=0, type=int)
@@ -36,7 +37,7 @@ def main():
     np.random.seed(args.seed)
 
     arena_paths = arena.collect(ARENAS)
-    run_name = time.strftime('%Y%m%d_%H%M%S')
+    run_name = f'{time.strftime("%Y%m%d_%H%M%S")}_{args.exp_name}'
     result_dir = os.path.join(RESULT_DIR, run_name)
     os.makedirs(result_dir, exist_ok=True)
 

@@ -19,13 +19,13 @@ uv run patch_env_logging
 ```
 
 ```bash
-uv run train
+uv run train exp_name
 ```
 
 ## Evaluate
 
 ```bash
-uv run evaluate results/20260812_213000/best.pt
+uv run evaluate results/20260812_213000_exp_name/best.pt
 ```
 
 ## Test
