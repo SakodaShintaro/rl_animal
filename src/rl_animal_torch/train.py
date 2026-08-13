@@ -20,14 +20,6 @@ WANDB_PROJECT = 'rl-animal-torch'
 BASE_PORT = 5005
 
 
-class WandbLogger:
-    def __init__(self, run):
-        self.run = run
-
-    def log(self, values, step):
-        self.run.log(values, step=step)
-
-
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--wandb_mode', default='online',
@@ -57,7 +49,7 @@ def main():
                      shape_rewards=True)
     run = wandb.init(project=WANDB_PROJECT, name=run_name, mode=args.wandb_mode,
                      dir=result_dir, config=dict(vars(config), arenas=ARENAS, seed=args.seed))
-    trainer = PPOTrainer(vec_env, config, torch.device("cuda"), WandbLogger(run))
+    trainer = PPOTrainer(vec_env, config, torch.device('cuda'), run)
     if args.restore is not None:
         trainer.restore(args.restore)
         print(f'restored {args.restore} at epoch {trainer.epoch}')

@@ -48,10 +48,6 @@ class Rollout:
 
 class PPOTrainer:
     def __init__(self, vec_env, config, device, logger):
-        '''
-        logger only has to offer log(values, step); train.py passes a wandb-backed one and
-        the tests pass one that discards.
-        '''
         self.agent = AnimalAgent().to(device)
         self.vec_env = vec_env
         self.config = config
@@ -278,7 +274,7 @@ class PPOTrainer:
                     self.save(best_checkpoint_path)
                     report += ' (best, saved)'
             print(report, flush=True)
-            self.logger.log(values, self.frame)
+            self.logger.log(values, step=self.frame)
 
             self.save(checkpoint_path)
 
