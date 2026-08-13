@@ -5,6 +5,7 @@ Ref. [Denys88/rl_animal](https://github.com/Denys88/rl_animal)
 ## Install
 
 ```bash
+git submodule update --init
 uv sync
 ```
 

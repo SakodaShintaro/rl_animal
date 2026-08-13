@@ -130,4 +130,4 @@ def test_collect_refuses_a_broken_arena(tmp_path):
 
 def test_the_shipped_arenas_are_accepted():
     assert len(arena.collect('configs/learning/stage3')) == 59
-    assert len(arena.collect('configs/learning/competition_configurations')) == 900
+    assert len(arena.collect('external/animal-ai/configs/competition')) == 900

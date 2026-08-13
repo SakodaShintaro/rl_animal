@@ -17,7 +17,7 @@ from rl_animal_torch.network import AnimalAgent
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('checkpoint')
-    parser.add_argument('--configs', default='configs/learning/competition_configurations',
+    parser.add_argument('--configs', default='external/animal-ai/configs/competition',
                         help='directory of scenario yaml files')
     parser.add_argument('--num_envs', default=12, type=int)
     parser.add_argument('--base_port', default=5900, type=int)

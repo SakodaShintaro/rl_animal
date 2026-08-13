@@ -1,0 +1,3 @@
+[submodule "external/animal-ai"]
+	path = external/animal-ai
+	url = https://github.com/SakodaShintaro/animal-ai.git
