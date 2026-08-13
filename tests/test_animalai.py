@@ -17,7 +17,7 @@ from rl_animal_torch.network import AnimalAgent
 from rl_animal_torch.ppo import PPOTrainer
 from rl_animal_torch.vec_env import VecEnv
 
-ARENAS = 'configs/learning/stage3'
+ARENAS = 'external/animal-ai/configs/rank1_training_data'
 BASE_PORT = 7100
 
 
