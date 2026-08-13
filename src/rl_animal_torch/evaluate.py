@@ -50,15 +50,31 @@ def build_tasks(paths, num_envs):
     return tasks
 
 
-def report(rows):
+def summary_row(category, rows):
     passed = [row['passed'] for row in rows]
-    mean_reward = np.mean([row['reward'] for row in rows])
-    print(f'pass rate: {np.mean(passed):.4f} ({sum(passed)} / {len(rows)} episodes)')
-    print(f'mean reward: {mean_reward:.4f}')
-    for category in sorted({row['category'] for row in rows}):
-        in_category = [row['passed'] for row in rows if row['category'] == category]
-        print(f'  category {category:<3} pass rate {np.mean(in_category):.3f} '
-              f'({len(in_category)} episodes)')
+    return {'category': category, 'episodes': len(rows), 'passed': sum(passed),
+            'pass_rate': round(float(np.mean(passed)), 3),
+            'mean_reward': round(float(np.mean([row['reward'] for row in rows])), 3)}
+
+
+def summarize(rows):
+    return [summary_row('total', rows)] + [
+        summary_row(category, [row for row in rows if row['category'] == category])
+        for category in sorted({row['category'] for row in rows})]
+
+
+def report(summary):
+    for entry in summary:
+        print(f'{entry["category"]:<10} pass rate {entry["pass_rate"]:.3f} '
+              f'({entry["passed"]} / {entry["episodes"]})  '
+              f'mean reward {entry["mean_reward"]:.3f}')
+
+
+def write_csv(path, fields, rows):
+    with open(path, 'w', newline='') as out_file:
+        writer = csv.DictWriter(out_file, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(rows)
 
 
 @torch.no_grad()
@@ -145,18 +161,22 @@ def main():
 
     device = torch.device("cuda")
     agent = load_agent(args.checkpoint, device)
-    stem = os.path.splitext(os.path.abspath(args.checkpoint))[0]
-    output = f'{stem}_eval_{time.strftime("%Y%m%d_%H%M%S")}.csv'
+    stem = f'{os.path.splitext(os.path.abspath(args.checkpoint))[0]}_eval_' \
+           f'{time.strftime("%Y%m%d_%H%M%S")}'
+    output = f'{stem}.csv'
+    summary_output = f'{stem}_summary.csv'
     print(f'loaded {args.checkpoint}, writing {output}')
 
-    scratch = os.path.join(os.path.dirname(stem), '.arenas')
+    scratch = os.path.join(os.path.dirname(output), '.arenas')
     os.makedirs(scratch, exist_ok=True)
     envs = [AnimalEnv(ENV_PATH, paths, index, args.base_port, args.seed + index,
                       shape_rewards=False, scratch_dir=scratch)
             for index in range(args.num_envs)]
+    fields = ['scenario', 'category', 'pass_mark', 'reward', 'passed', 'steps']
     try:
+        # written as the episodes end so a run that dies still leaves its results, then
+        # rewritten in scenario order once they are all in
         with open(output, 'w', buffering=1, newline='') as out_file:
-            fields = ['scenario', 'category', 'pass_mark', 'reward', 'passed', 'steps']
             writer = csv.DictWriter(out_file, fieldnames=fields)
             writer.writeheader()
             rows = evaluate(envs, agent, build_tasks(paths, args.num_envs),
@@ -165,7 +185,14 @@ def main():
         for env in envs:
             env.close()
 
-    report(rows)
+    rows.sort(key=lambda row: row['scenario'])
+    write_csv(output, fields, rows)
+
+    summary = summarize(rows)
+    write_csv(summary_output, ['category', 'episodes', 'passed', 'pass_rate', 'mean_reward'],
+              summary)
+    print(f'wrote {summary_output}')
+    report(summary)
     sys.stdout.flush()
 
 
