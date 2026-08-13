@@ -140,7 +140,7 @@ def evaluate(envs, agent, tasks, writer, device, log_every):
 
 def main():
     args = parse_args()
-    paths = arena.collect(args.configs)[::args.stride]
+    paths = arena.collect([args.configs])[::args.stride]
     print(f'scenarios: {len(paths)}, envs: {args.num_envs}')
 
     device = torch.device("cuda")

@@ -121,13 +121,13 @@ def test_write_with_time_replaces_only_the_arena_time(tmp_path):
 
 def test_collect_refuses_a_broken_arena(tmp_path):
     (tmp_path / 'good.yaml').write_text(GOOD)
-    assert len(arena.collect(str(tmp_path))) == 1
+    assert len(arena.collect([str(tmp_path)])) == 1
 
     (tmp_path / 'null.yaml').write_text(NULL_COLOURS)
     with pytest.raises(AssertionError, match='with no value'):
-        arena.collect(str(tmp_path))
+        arena.collect([str(tmp_path)])
 
 
 def test_the_shipped_arenas_are_accepted():
-    assert len(arena.collect('external/animal-ai/configs/rank1_training_data')) == 59
-    assert len(arena.collect('external/animal-ai/configs/competition')) == 900
+    assert len(arena.collect(['external/animal-ai/configs/rank1_training_data'])) == 59
+    assert len(arena.collect(['external/animal-ai/configs/competition'])) == 900

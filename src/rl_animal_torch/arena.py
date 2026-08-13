@@ -6,6 +6,7 @@ so the shapes that do that are refused before any instance is launched.
 import os
 import re
 import tempfile
+from pathlib import Path
 
 SPAWNABLE_NAMES = frozenset([
     'Agent', 'BadGoal', 'BadGoalBounce', 'Cardbox1', 'Cardbox2', 'Cylinder',
@@ -134,10 +135,16 @@ def write_with_time(raw, arena_time, directory):
     return path
 
 
-def collect(directory):
-    paths = sorted(os.path.join(directory, name) for name in os.listdir(directory)
-                   if name.endswith('.yml') or name.endswith('.yaml'))
-    assert len(paths) > 0, f'no arena files in {directory}'
+def collect(directories):
+    '''
+    The arena files under every given root form one candidate set, so a curriculum stage can
+    be mixed in by naming its directory and a root that is listed twice, or that sits inside
+    another, still contributes each file once.
+    '''
+    paths = sorted({str(path.resolve()) for directory in directories
+                    for path in Path(directory).rglob('*')
+                    if path.suffix in ('.yml', '.yaml')})
+    assert len(paths) > 0, f'no arena files under {", ".join(directories)}'
     for path in paths:
         validate(open(path).read(), path)
 

@@ -11,7 +11,9 @@ from rl_animal_torch.config import ENV_PATH, TrainingConfig
 from rl_animal_torch.ppo import PPOTrainer
 from rl_animal_torch.vec_env import VecEnv
 
-ARENAS = 'external/animal-ai/configs/rank1_training_data'
+# every arena file under these roots is drawn from, so a curriculum stage such as
+# external/animal-ai/configs/paper_curriculum_split_mirrored/stage03 can be added here
+ARENAS = ['external/animal-ai/configs/rank1_training_data']
 RESULT_DIR = 'results'
 WANDB_PROJECT = 'rl-animal-torch'
 # each instance serves on BASE_PORT + its index
