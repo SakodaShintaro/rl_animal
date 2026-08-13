@@ -12,9 +12,9 @@ from rl_animal_torch.config import ENV_PATH
 # component unconditionally, so the entry point of the logging method is overwritten with
 # `ret`. The rest of its IL stays in place, decodable but never reached. The original
 # assembly is kept next to it as .orig.
-ASSEMBLY = 'animalAI_Data/Managed/Scripts.dll'
-TYPE_NAME = 'CSVWriter'
-METHOD_NAME = 'LogToCSV'
+ASSEMBLY = "animalAI_Data/Managed/Scripts.dll"
+TYPE_NAME = "CSVWriter"
+METHOD_NAME = "LogToCSV"
 RET = 0x2A
 
 
@@ -30,29 +30,29 @@ def body_offset(path):
             first = pe.__data__[header]
             if first & 0x3 == 0x2:
                 return header + 1, first >> 2
-            return header + 12, struct.unpack_from('<I', pe.__data__, header + 4)[0]
+            return header + 12, struct.unpack_from("<I", pe.__data__, header + 4)[0]
 
-    raise AssertionError(f'{TYPE_NAME}.{METHOD_NAME} not found in {path}')
+    raise AssertionError(f"{TYPE_NAME}.{METHOD_NAME} not found in {path}")
 
 
 def main():
     path = os.path.join(os.path.dirname(ENV_PATH), ASSEMBLY)
-    assert os.path.exists(path), f'{path} does not exist'
+    assert os.path.exists(path), f"{path} does not exist"
 
     offset, size = body_offset(path)
-    data = bytearray(open(path, 'rb').read())
+    data = bytearray(open(path, "rb").read())
     if data[offset] == RET:
-        print(f'{TYPE_NAME}.{METHOD_NAME} already returns immediately')
+        print(f"{TYPE_NAME}.{METHOD_NAME} already returns immediately")
         return
 
-    backup = path + '.orig'
+    backup = path + ".orig"
     if not os.path.exists(backup):
         shutil.copyfile(path, backup)
-        print(f'backed up {backup}')
+        print(f"backed up {backup}")
     data[offset] = RET
-    open(path, 'wb').write(data)
-    print(f'{TYPE_NAME}.{METHOD_NAME}: {size} bytes of IL at {offset} now start with ret')
+    open(path, "wb").write(data)
+    print(f"{TYPE_NAME}.{METHOD_NAME}: {size} bytes of IL at {offset} now start with ret")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -3,40 +3,59 @@
 An arena the v4 player cannot build makes it stop answering instead of reporting anything,
 so the shapes that do that are refused before any instance is launched.
 """
+
 import os
 import re
 import tempfile
 from pathlib import Path
 
-SPAWNABLE_NAMES = frozenset([
-    'Agent', 'BadGoal', 'BadGoalBounce', 'Cardbox1', 'Cardbox2', 'Cylinder',
-    'CylinderTunnel', 'CylinderTunnelTransparent', 'DeathZone', 'GoodGoal',
-    'GoodGoalBounce', 'GoodGoalMulti', 'GoodGoalMultiBounce', 'HotZone', 'LObject',
-    'LObject2', 'Ramp', 'UObject', 'Wall', 'WallTransparent',
-])
+SPAWNABLE_NAMES = frozenset(
+    [
+        "Agent",
+        "BadGoal",
+        "BadGoalBounce",
+        "Cardbox1",
+        "Cardbox2",
+        "Cylinder",
+        "CylinderTunnel",
+        "CylinderTunnelTransparent",
+        "DeathZone",
+        "GoodGoal",
+        "GoodGoalBounce",
+        "GoodGoalMulti",
+        "GoodGoalMultiBounce",
+        "HotZone",
+        "LObject",
+        "LObject2",
+        "Ramp",
+        "UObject",
+        "Wall",
+        "WallTransparent",
+    ]
+)
 
-LIST_KEYS = ('positions', 'rotations', 'sizes', 'colors', 'skins', 'spawnColors')
+LIST_KEYS = ("positions", "rotations", "sizes", "colors", "skins", "spawnColors")
 
-ITEM_PATTERN = re.compile(r'^[ \t]*-[ \t]+!Item[ \t]*$')
-AGENT_PATTERN = re.compile(r'^[ \t]*name:[ \t]*Agent[ \t]*$')
-POSITIONS_PATTERN = re.compile(r'^[ \t]*positions:')
-NAME_PATTERN = re.compile(r'^[ \t]*name:[ \t]*([A-Za-z0-9_]+)', re.M)
-TIME_PATTERN = re.compile(r'^[ \t]*t:[ \t]*([\d.]+)', re.M)
+ITEM_PATTERN = re.compile(r"^[ \t]*-[ \t]+!Item[ \t]*$")
+AGENT_PATTERN = re.compile(r"^[ \t]*name:[ \t]*Agent[ \t]*$")
+POSITIONS_PATTERN = re.compile(r"^[ \t]*positions:")
+NAME_PATTERN = re.compile(r"^[ \t]*name:[ \t]*([A-Za-z0-9_]+)", re.M)
+TIME_PATTERN = re.compile(r"^[ \t]*t:[ \t]*([\d.]+)", re.M)
 
 
 def read_arena_time(raw):
     match = TIME_PATTERN.search(raw)
-    assert match is not None, 'no t: field in the arena config'
+    assert match is not None, "no t: field in the arena config"
 
     return int(float(match.group(1)))
 
 
 def read_pass_mark(raw):
-    '''
+    """
     10-22-2 is the only released competition scenario without a pass_mark; the other two
     variants of the same test both use 0.
-    '''
-    match = re.search(r'pass_mark:\s*([-\d.]+)', raw)
+    """
+    match = re.search(r"pass_mark:\s*([-\d.]+)", raw)
     if match is None:
         return 0.0
 
@@ -44,23 +63,23 @@ def read_pass_mark(raw):
 
 
 def null_list_keys(lines):
-    '''
+    """
     Yields (key, line index) for every list key written with no value. A sequence entry
     belongs to the key only if it is indented at least as far as the key: `colors:` at six
     spaces followed by `- !Item` at four is the next entry of the enclosing `items:` list,
     which leaves `colors:` null.
-    '''
+    """
     for index, line in enumerate(lines):
         stripped = line.strip()
-        if not stripped.endswith(':') or stripped[:-1] not in LIST_KEYS:
+        if not stripped.endswith(":") or stripped[:-1] not in LIST_KEYS:
             continue
         indent = len(line) - len(line.lstrip())
-        for following in lines[index + 1:]:
+        for following in lines[index + 1 :]:
             content = following.strip()
-            if len(content) == 0 or content.startswith('#'):
+            if len(content) == 0 or content.startswith("#"):
                 continue
             following_indent = len(following) - len(following.lstrip())
-            if content.startswith('-') and following_indent >= indent:
+            if content.startswith("-") and following_indent >= indent:
                 break
             yield stripped[:-1], index
             break
@@ -76,7 +95,7 @@ def item_blocks(lines):
 
 
 def null_color_lists(raw):
-    '''
+    """
     A `colors:` written with no value deserializes to null instead of leaving the C# side's
     default empty list, and Spawnable's constructor iterates it. Verified by restoring the
     single line into two training levels: with it the player dies, without it both run.
@@ -97,54 +116,60 @@ def null_color_lists(raw):
 
     A null `positions` or `sizes` on a non-Agent item is survivable; 101 of those appear
     across the released scenarios, which all complete.
-    '''
-    return sorted({key for key, _ in null_list_keys(raw.split('\n'))}
-                  & {'colors', 'spawnColors'})
+    """
+    return sorted({key for key, _ in null_list_keys(raw.split("\n"))} & {"colors", "spawnColors"})
 
 
 def validate(raw, path):
     unknown = sorted(set(NAME_PATTERN.findall(raw)) - SPAWNABLE_NAMES)
     assert len(unknown) == 0, (
-        f'{path} uses item names the v4 build does not have: {", ".join(unknown)}. It would '
-        f'hang the player rather than report an error.')
+        f"{path} uses item names the v4 build does not have: {', '.join(unknown)}. It would "
+        f"hang the player rather than report an error."
+    )
 
     null_colors = null_color_lists(raw)
     assert len(null_colors) == 0, (
-        f'{path} writes {", ".join(null_colors)} with no value, which deserializes to null '
-        f'and kills the v4 player inside initVec3sFromRGBs; delete the key.')
+        f"{path} writes {', '.join(null_colors)} with no value, which deserializes to null "
+        f"and kills the v4 player inside initVec3sFromRGBs; delete the key."
+    )
 
-    for block in item_blocks(raw.split('\n')):
+    for block in item_blocks(raw.split("\n")):
         is_agent = any(AGENT_PATTERN.match(line) for line in block)
         has_positions = any(POSITIONS_PATTERN.match(line) for line in block)
         assert not (is_agent and not has_positions), (
-            f'{path} has an Agent with no positions. The v4 build indexes positions[0] '
-            f'unconditionally and hangs; give it !Vector3 {{x: -1, y: 0, z: -1}} to keep it '
-            f'random.')
+            f"{path} has an Agent with no positions. The v4 build indexes positions[0] "
+            f"unconditionally and hangs; give it !Vector3 {{x: -1, y: 0, z: -1}} to keep it "
+            f"random."
+        )
 
 
 def write_with_time(raw, arena_time, directory):
-    '''
+    """
     v4 reads the arena as text, so a randomized episode length has to be written out as a
     file rather than set on a parsed config object the way the v1 training did.
-    '''
-    patched = re.sub(r'^([ \t]*)t:[ \t]*[\d.]+', rf'\g<1>t: {arena_time}', raw,
-                     count=1, flags=re.M)
-    handle, path = tempfile.mkstemp(suffix='.yaml', dir=directory)
-    with os.fdopen(handle, 'w') as out_file:
+    """
+    patched = re.sub(r"^([ \t]*)t:[ \t]*[\d.]+", rf"\g<1>t: {arena_time}", raw, count=1, flags=re.M)
+    handle, path = tempfile.mkstemp(suffix=".yaml", dir=directory)
+    with os.fdopen(handle, "w") as out_file:
         out_file.write(patched)
     return path
 
 
 def collect(directories):
-    '''
+    """
     The arena files under every given root form one candidate set, so a curriculum stage can
     be mixed in by naming its directory and a root that is listed twice, or that sits inside
     another, still contributes each file once.
-    '''
-    paths = sorted({str(path.resolve()) for directory in directories
-                    for path in Path(directory).rglob('*')
-                    if path.suffix in ('.yml', '.yaml')})
-    assert len(paths) > 0, f'no arena files under {", ".join(directories)}'
+    """
+    paths = sorted(
+        {
+            str(path.resolve())
+            for directory in directories
+            for path in Path(directory).rglob("*")
+            if path.suffix in (".yml", ".yaml")
+        }
+    )
+    assert len(paths) > 0, f"no arena files under {', '.join(directories)}"
     for path in paths:
         validate(open(path).read(), path)
 

@@ -13,10 +13,11 @@ ACTIONS_NUM = 9
 
 
 class Stacker:
-    '''
+    """
     The frame and velocity stacking of animalai_wrapper.AnimalStack. SKIP_FRAMES was 1, so
     there is no action repeat to reproduce.
-    '''
+    """
+
     def __init__(self, config):
         self.config = config
         self.frames = deque([], maxlen=config.visual_frames)
@@ -24,7 +25,8 @@ class Stacker:
         self.time = 0.0
         self.velocity_scale = np.asarray(config.velocity_scale, dtype=np.float32)
         self.time_decrement = config.decision_period / (
-            config.physics_steps_per_t * config.time_unit)
+            config.physics_steps_per_t * config.time_unit
+        )
 
     @staticmethod
     def to_raw_velocity(vector):
@@ -60,12 +62,14 @@ class Stacker:
 
 
 class AnimalEnv:
-    '''
+    """
     reset() picks one of `arena_paths` at random with a randomized episode length, the way
     the original training did, and returns (visual uint8 HWC, velocity float32).
-    '''
-    def __init__(self, env_path, arena_paths, worker_id, base_port, seed, shape_rewards,
-                 scratch_dir):
+    """
+
+    def __init__(
+        self, env_path, arena_paths, worker_id, base_port, seed, shape_rewards, scratch_dir
+    ):
         config = EnvConfig()
         self.config = config
         self.arena_paths = arena_paths
@@ -113,10 +117,10 @@ class AnimalEnv:
         return self.stacker.observation()
 
     def reset_to(self, path):
-        '''
+        """
         Reset onto one specific arena, keeping its own episode length. Used by evaluation,
         which has to run the released scenarios as written.
-        '''
+        """
         self.arena_time = arena.read_arena_time(open(path).read())
         self.env.reset(path)
         camera, vector, _, _ = self._observe()
@@ -124,14 +128,18 @@ class AnimalEnv:
         return self.stacker.observation()
 
     def send(self, action):
-        '''
+        """
         Split from receive so that a driver holding several instances can hand the action
         to all of them before waiting on any.
-        '''
-        self.env.set_actions(self.behavior, ActionTuple(
-            continuous=np.zeros((1, 0), dtype=np.float32),
-            # v4's two 3-way branches, in the order the flattened Discrete(9) assumed
-            discrete=np.array([[action // 3, action % 3]], dtype=np.int32)))
+        """
+        self.env.set_actions(
+            self.behavior,
+            ActionTuple(
+                continuous=np.zeros((1, 0), dtype=np.float32),
+                # v4's two 3-way branches, in the order the flattened Discrete(9) assumed
+                discrete=np.array([[action // 3, action % 3]], dtype=np.int32),
+            ),
+        )
         self.env.step()
 
     def receive(self):
@@ -161,5 +169,7 @@ class AnimalEnv:
 
 
 def observation_shapes(config=EnvConfig()):
-    return ((config.resolution, config.resolution, 3 * config.visual_frames),
-            (4 * config.velocity_frames,))
+    return (
+        (config.resolution, config.resolution, 3 * config.visual_frames),
+        (4 * config.velocity_frames,),
+    )

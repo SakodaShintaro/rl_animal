@@ -9,6 +9,13 @@ git submodule update --init
 uv sync
 ```
 
+Ruff lint (`--fix`) and ruff-format are applied to `*.py` / `*.pyi` files on every `git commit`.
+
+```bash
+uv tool install pre-commit
+pre-commit install
+```
+
 ## Train
 
 The player logs one CSV row per step into a queue its writer cannot drain at this

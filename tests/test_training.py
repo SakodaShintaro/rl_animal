@@ -1,4 +1,5 @@
 """A light training run against a stand-in environment."""
+
 import numpy as np
 import torch
 
@@ -7,8 +8,9 @@ from rl_animal_torch.env import observation_shapes
 from rl_animal_torch.network import LSTM_UNITS
 from rl_animal_torch.ppo import PPOTrainer, format_duration, swap_and_flatten
 
-LIGHT = TrainingConfig(num_actors=4, steps_num=16, minibatch_size=32, mini_epochs=2,
-                       seq_len=8, max_epochs=2)
+LIGHT = TrainingConfig(
+    num_actors=4, steps_num=16, minibatch_size=32, mini_epochs=2, seq_len=8, max_epochs=2
+)
 
 
 class NoiseVecEnv:
@@ -45,15 +47,14 @@ class SilentLogger:
 
 
 def make_trainer(config=LIGHT):
-    return PPOTrainer(NoiseVecEnv(config.num_actors), config, torch.device('cpu'),
-                      SilentLogger())
+    return PPOTrainer(NoiseVecEnv(config.num_actors), config, torch.device("cpu"), SilentLogger())
 
 
 def test_swap_and_flatten_is_environment_major():
-    '''
+    """
     Environment e at step t has to land at e * steps + t, which is what the recurrent
     unrolling and the sequence slicing both assume.
-    '''
+    """
     steps, actors = 3, 2
     array = np.arange(steps * actors).reshape(steps, actors)
     assert swap_and_flatten(array).tolist() == [0, 2, 4, 1, 3, 5]
@@ -86,8 +87,8 @@ def test_update_moves_the_weights_and_reports_finite_losses():
 
 def test_train_runs_and_round_trips_a_checkpoint(tmp_path):
     trainer = make_trainer()
-    last = str(tmp_path / 'last.pt')
-    best = str(tmp_path / 'best.pt')
+    last = str(tmp_path / "last.pt")
+    best = str(tmp_path / "best.pt")
     trainer.train(last, best)
 
     assert trainer.epoch == LIGHT.max_epochs
@@ -101,6 +102,6 @@ def test_train_runs_and_round_trips_a_checkpoint(tmp_path):
 
 
 def test_format_duration():
-    assert format_duration(0) == '0:00:00'
-    assert format_duration(3661) == '1:01:01'
-    assert format_duration(90061) == '1d 1:01:01'
+    assert format_duration(0) == "0:00:00"
+    assert format_duration(3661) == "1:01:01"
+    assert format_duration(90061) == "1d 1:01:01"

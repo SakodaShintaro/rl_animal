@@ -25,7 +25,7 @@ evaluate = "rl_animal_torch.evaluate:main"
 patch_env_logging = "rl_animal_torch.patch_env_logging:main"
 
 [project.optional-dependencies]
-dev = ["pytest", "ruff"]
+dev = ["pre-commit>=4.6.0", "pytest", "ruff"]
 
 [build-system]
 requires = ["hatchling"]
