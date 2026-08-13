@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import wandb
 
-from rl_animal_torch import arena
+from rl_animal_torch import arena, evaluate
 from rl_animal_torch.config import ENV_PATH, TrainingConfig
 from rl_animal_torch.ppo import PPOTrainer
 from rl_animal_torch.vec_env import VecEnv
@@ -68,11 +68,17 @@ def main():
         trainer.restore(args.restore)
         print(f"restored {args.restore} at epoch {trainer.epoch}")
 
+    best_checkpoint = os.path.join(result_dir, "best.pt")
     try:
-        trainer.train(os.path.join(result_dir, "last.pt"), os.path.join(result_dir, "best.pt"))
+        trainer.train(os.path.join(result_dir, "last.pt"), best_checkpoint)
     finally:
         vec_env.close()
         run.finish()
+
+    # the training instances are down by now, so the evaluation can take the machine
+    evaluate.run(
+        best_checkpoint, evaluate.CONFIGS, evaluate.NUM_ENVS, evaluate.BASE_PORT, args.seed, 1
+    )
 
 
 if __name__ == "__main__":

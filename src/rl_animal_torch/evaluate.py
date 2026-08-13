@@ -13,18 +13,20 @@ from rl_animal_torch.config import ENV_PATH, EnvConfig
 from rl_animal_torch.env import AnimalEnv
 from rl_animal_torch.network import AnimalAgent
 
+CONFIGS = "external/animal-ai/configs/competition"
+NUM_ENVS = 12
+# far enough above the ports the training instances take that both can be up at once
+BASE_PORT = 5900
+SEED = 32
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("checkpoint")
-    parser.add_argument(
-        "--configs",
-        default="external/animal-ai/configs/competition",
-        help="directory of scenario yaml files",
-    )
-    parser.add_argument("--num_envs", default=12, type=int)
-    parser.add_argument("--base_port", default=5900, type=int)
-    parser.add_argument("--seed", default=32, type=int)
+    parser.add_argument("--configs", default=CONFIGS, help="directory of scenario yaml files")
+    parser.add_argument("--num_envs", default=NUM_ENVS, type=int)
+    parser.add_argument("--base_port", default=BASE_PORT, type=int)
+    parser.add_argument("--seed", default=SEED, type=int)
     parser.add_argument(
         "--stride", default=1, type=int, help="take every Nth scenario, for a quick look"
     )
@@ -173,20 +175,18 @@ def evaluate(envs, agent, tasks, writer, device, log_every):
     return rows
 
 
-def main():
-    args = parse_args()
-    paths = arena.collect([args.configs])[:: args.stride]
-    print(f"scenarios: {len(paths)}, envs: {args.num_envs}")
+def run(checkpoint, configs, num_envs, base_port, seed, stride):
+    paths = arena.collect([configs])[::stride]
+    print(f"scenarios: {len(paths)}, envs: {num_envs}")
 
     device = torch.device("cuda")
-    agent = load_agent(args.checkpoint, device)
+    agent = load_agent(checkpoint, device)
     stem = (
-        f"{os.path.splitext(os.path.abspath(args.checkpoint))[0]}_eval_"
-        f"{time.strftime('%Y%m%d_%H%M%S')}"
+        f"{os.path.splitext(os.path.abspath(checkpoint))[0]}_eval_{time.strftime('%Y%m%d_%H%M%S')}"
     )
     output = f"{stem}.csv"
     summary_output = f"{stem}_summary.csv"
-    print(f"loaded {args.checkpoint}, writing {output}")
+    print(f"loaded {checkpoint}, writing {output}")
 
     scratch = os.path.join(os.path.dirname(output), ".arenas")
     os.makedirs(scratch, exist_ok=True)
@@ -195,12 +195,12 @@ def main():
             ENV_PATH,
             paths,
             index,
-            args.base_port,
-            args.seed + index,
+            base_port,
+            seed + index,
             shape_rewards=False,
             scratch_dir=scratch,
         )
-        for index in range(args.num_envs)
+        for index in range(num_envs)
     ]
     fields = ["scenario", "category", "pass_mark", "reward", "passed", "steps"]
     try:
@@ -209,7 +209,7 @@ def main():
         with open(output, "w", buffering=1, newline="") as out_file:
             writer = csv.DictWriter(out_file, fieldnames=fields)
             writer.writeheader()
-            rows = evaluate(envs, agent, build_tasks(paths, args.num_envs), writer, device, 25)
+            rows = evaluate(envs, agent, build_tasks(paths, num_envs), writer, device, 25)
     finally:
         for env in envs:
             env.close()
@@ -224,6 +224,12 @@ def main():
     print(f"wrote {summary_output}")
     report(summary)
     sys.stdout.flush()
+    return summary
+
+
+def main():
+    args = parse_args()
+    run(args.checkpoint, args.configs, args.num_envs, args.base_port, args.seed, args.stride)
 
 
 if __name__ == "__main__":
