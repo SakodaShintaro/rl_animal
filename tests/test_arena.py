@@ -112,14 +112,6 @@ def test_agent_without_positions_is_refused():
         arena.validate(AGENT_WITHOUT_POSITIONS, "fixture")
 
 
-def test_write_with_time_replaces_only_the_arena_time(tmp_path):
-    path = arena.write_with_time(GOOD, 999, str(tmp_path))
-    written = open(path).read()
-    assert arena.read_arena_time(written) == 999
-    assert written.count("t: ") == 1
-    assert "name: GoodGoal" in written
-
-
 def test_collect_refuses_a_broken_arena(tmp_path):
     (tmp_path / "good.yaml").write_text(GOOD)
     assert len(arena.collect([str(tmp_path)])) == 1

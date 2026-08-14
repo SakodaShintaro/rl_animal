@@ -15,11 +15,16 @@ from rl_animal_torch.vec_env import VecEnv
 # every arena file under these roots is drawn from, so a curriculum stage such as
 # external/animal-ai/configs/paper_curriculum_split_mirrored/stage03 can be added here
 ARENAS = [
-    "external/animal-ai/configs/rank1_training_data",
-    # "external/animal-ai/configs/paper_curriculum_split_mirrored/stage00",
-    # "external/animal-ai/configs/paper_curriculum_split_mirrored/stage01",
-    # "external/animal-ai/configs/paper_curriculum_split_mirrored/stage02",
-    # "external/animal-ai/configs/paper_curriculum_split_mirrored/stage03",
+    "external/animal-ai/configs/paper_curriculum_split_mirrored/stage00",
+    "external/animal-ai/configs/paper_curriculum_split_mirrored/stage01",
+    "external/animal-ai/configs/paper_curriculum_split_mirrored/stage02",
+    "external/animal-ai/configs/paper_curriculum_split_mirrored/stage03",
+    "external/animal-ai/configs/paper_curriculum_split_mirrored/stage04",
+    "external/animal-ai/configs/paper_curriculum_split_mirrored/stage05",
+    "external/animal-ai/configs/paper_curriculum_split_mirrored/stage06",
+    "external/animal-ai/configs/paper_curriculum_split_mirrored/stage07",
+    "external/animal-ai/configs/paper_curriculum_split_mirrored/stage08",
+    "external/animal-ai/configs/paper_curriculum_split_mirrored/stage09",
 ]
 # each instance serves on BASE_PORT + its index
 BASE_PORT = 5005

@@ -186,8 +186,6 @@ def run(checkpoint, configs, num_envs, base_port, seed, stride):
     summary_output = Path(f"{stem}_summary.csv")
     print(f"loaded {checkpoint}, writing {output}")
 
-    scratch = output.parent / ".arenas"
-    scratch.mkdir(parents=True, exist_ok=True)
     envs = [
         AnimalEnv(
             ENV_PATH,
@@ -196,7 +194,6 @@ def run(checkpoint, configs, num_envs, base_port, seed, stride):
             base_port,
             seed + index,
             shape_rewards=False,
-            scratch_dir=scratch,
         )
         for index in range(num_envs)
     ]

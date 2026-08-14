@@ -33,8 +33,6 @@ class EnvConfig:
     # Academy steps, so the per-decision motion is the same at 1 and at 300
     timescale: int = 300
     target_frame_rate: int = -1
-    min_time: int = 200
-    max_time: int = 1100
     # the network was trained on the velocity divided by this
     velocity_scale: tuple = (1.0, 1.0, 16.0)
     visual_frames: int = 2

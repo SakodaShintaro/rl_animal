@@ -36,7 +36,7 @@ class SilentLogger:
 
 def test_one_instance_observes_and_steps(env_path, tmp_path):
     paths = arena.collect(ARENAS)
-    env = AnimalEnv(env_path, paths, 0, BASE_PORT, 0, shape_rewards=True, scratch_dir=str(tmp_path))
+    env = AnimalEnv(env_path, paths, 0, BASE_PORT, 0, shape_rewards=True)
     try:
         visual, vels = env.reset()
         visual_shape, vels_shape = observation_shapes()
@@ -81,11 +81,7 @@ def test_light_evaluation(env_path, tmp_path):
     Three scenarios through one instance, scored the way the competition scores them.
     """
     paths = arena.collect(ARENAS)[:3]
-    envs = [
-        AnimalEnv(
-            env_path, paths, 0, BASE_PORT + 20, 0, shape_rewards=False, scratch_dir=str(tmp_path)
-        )
-    ]
+    envs = [AnimalEnv(env_path, paths, 0, BASE_PORT + 20, 0, shape_rewards=False)]
     output = tmp_path / "results.csv"
     try:
         agent = AnimalAgent().eval()

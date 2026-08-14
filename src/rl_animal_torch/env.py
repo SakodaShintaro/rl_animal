@@ -1,4 +1,3 @@
-import os
 import random
 from collections import deque
 
@@ -63,18 +62,15 @@ class Stacker:
 
 class AnimalEnv:
     """
-    reset() picks one of `arena_paths` at random with a randomized episode length, the way
-    the original training did, and returns (visual uint8 HWC, velocity float32).
+    reset() picks one of `arena_paths` at random and returns
+    (visual uint8 HWC, velocity float32).
     """
 
-    def __init__(
-        self, env_path, arena_paths, worker_id, base_port, seed, shape_rewards, scratch_dir
-    ):
+    def __init__(self, env_path, arena_paths, worker_id, base_port, seed, shape_rewards):
         config = EnvConfig()
         self.config = config
         self.arena_paths = arena_paths
         self.shape_rewards = shape_rewards
-        self.scratch_dir = scratch_dir
         self.random = random.Random(seed)
         self.stacker = Stacker(config)
         self.arena_time = arena.read_arena_time(open(arena_paths[0]).read())
@@ -104,22 +100,11 @@ class AnimalEnv:
         return decision.obs[0][0], decision.obs[1][0], float(decision.reward[0]), False
 
     def reset(self):
-        raw = open(self.random.choice(self.arena_paths)).read()
-        self.arena_time = self.random.randrange(self.config.min_time, self.config.max_time)
-        path = arena.write_with_time(raw, self.arena_time, self.scratch_dir)
-        try:
-            self.env.reset(path)
-        finally:
-            os.remove(path)
-
-        camera, vector, _, _ = self._observe()
-        self.stacker.reset(camera, vector, self.arena_time)
-        return self.stacker.observation()
+        return self.reset_to(self.random.choice(self.arena_paths))
 
     def reset_to(self, path):
         """
-        Reset onto one specific arena, keeping its own episode length. Used by evaluation,
-        which has to run the released scenarios as written.
+        Reset onto one specific arena, keeping the episode length it was written with.
         """
         self.arena_time = arena.read_arena_time(open(path).read())
         self.env.reset(path)

@@ -1,6 +1,4 @@
 import multiprocessing as mp
-import os
-import tempfile
 
 import numpy as np
 
@@ -8,8 +6,7 @@ from rl_animal_torch.env import AnimalEnv
 
 
 def worker_main(connection, env_path, arena_paths, worker_id, base_port, seed, shape_rewards):
-    scratch_dir = tempfile.mkdtemp(prefix="aai_arenas_")
-    env = AnimalEnv(env_path, arena_paths, worker_id, base_port, seed, shape_rewards, scratch_dir)
+    env = AnimalEnv(env_path, arena_paths, worker_id, base_port, seed, shape_rewards)
     try:
         connection.send(env.reset())
         while True:
@@ -25,9 +22,6 @@ def worker_main(connection, env_path, arena_paths, worker_id, base_port, seed, s
                 return
     finally:
         env.close()
-        for name in os.listdir(scratch_dir):
-            os.remove(os.path.join(scratch_dir, name))
-        os.rmdir(scratch_dir)
         connection.close()
 
 

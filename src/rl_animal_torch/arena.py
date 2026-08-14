@@ -1,12 +1,10 @@
-"""Reading, checking and rewriting the arena configuration files.
+"""Reading and checking the arena configuration files.
 
 An arena the v4 player cannot build makes it stop answering instead of reporting anything,
 so the shapes that do that are refused before any instance is launched.
 """
 
-import os
 import re
-import tempfile
 from pathlib import Path
 
 SPAWNABLE_NAMES = frozenset(
@@ -141,18 +139,6 @@ def validate(raw, path):
             f"unconditionally and hangs; give it !Vector3 {{x: -1, y: 0, z: -1}} to keep it "
             f"random."
         )
-
-
-def write_with_time(raw, arena_time, directory):
-    """
-    v4 reads the arena as text, so a randomized episode length has to be written out as a
-    file rather than set on a parsed config object the way the v1 training did.
-    """
-    patched = re.sub(r"^([ \t]*)t:[ \t]*[\d.]+", rf"\g<1>t: {arena_time}", raw, count=1, flags=re.M)
-    handle, path = tempfile.mkstemp(suffix=".yaml", dir=directory)
-    with os.fdopen(handle, "w") as out_file:
-        out_file.write(patched)
-    return path
 
 
 def collect(directories):
