@@ -1,8 +1,8 @@
 import argparse
 import csv
-import os
 import sys
 import time
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -41,7 +41,7 @@ def load_agent(path, device):
 
 
 def category_of(path):
-    return os.path.basename(path).split("-")[0]
+    return Path(path).name.split("-")[0]
 
 
 def build_tasks(paths, num_envs):
@@ -147,7 +147,7 @@ def evaluate(envs, agent, tasks, writer, device, log_every):
 
             path = tasks[index][cursor[index]]
             row = {
-                "scenario": os.path.basename(path),
+                "scenario": Path(path).name,
                 "category": category_of(path),
                 "pass_mark": pass_mark[index],
                 "reward": reward[index],
@@ -181,15 +181,13 @@ def run(checkpoint, configs, num_envs, base_port, seed, stride):
 
     device = torch.device("cuda")
     agent = load_agent(checkpoint, device)
-    stem = (
-        f"{os.path.splitext(os.path.abspath(checkpoint))[0]}_eval_{time.strftime('%Y%m%d_%H%M%S')}"
-    )
-    output = f"{stem}.csv"
-    summary_output = f"{stem}_summary.csv"
+    stem = f"{Path(checkpoint).resolve().with_suffix('')}_eval_{time.strftime('%Y%m%d_%H%M%S')}"
+    output = Path(f"{stem}.csv")
+    summary_output = Path(f"{stem}_summary.csv")
     print(f"loaded {checkpoint}, writing {output}")
 
-    scratch = os.path.join(os.path.dirname(output), ".arenas")
-    os.makedirs(scratch, exist_ok=True)
+    scratch = output.parent / ".arenas"
+    scratch.mkdir(parents=True, exist_ok=True)
     envs = [
         AnimalEnv(
             ENV_PATH,
