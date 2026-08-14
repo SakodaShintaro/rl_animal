@@ -1,6 +1,7 @@
 import argparse
-import os
+import subprocess
 import time
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -20,10 +21,24 @@ ARENAS = [
     # "external/animal-ai/configs/paper_curriculum_split_mirrored/stage02",
     # "external/animal-ai/configs/paper_curriculum_split_mirrored/stage03",
 ]
-RESULT_DIR = "results"
-WANDB_PROJECT = "rl-animal-torch"
 # each instance serves on BASE_PORT + its index
 BASE_PORT = 5005
+
+
+def capture(*command):
+    return subprocess.run(command, capture_output=True, text=True).stdout
+
+
+def write_git_info(path):
+    """
+    The code a run came from. The diff is worth keeping because the arena roots and every
+    hyperparameter are edited in place rather than passed on the command line.
+    """
+    path.write_text(
+        f"branch:\n{capture('git', 'rev-parse', '--abbrev-ref', 'HEAD')}\n"
+        f"git show -s:\n{capture('git', 'show', '-s')}\n"
+        f"git diff:\n{capture('git', 'diff')}\n"
+    )
 
 
 def parse_args():
@@ -43,8 +58,9 @@ def main():
 
     arena_paths = arena.collect(ARENAS)
     run_name = f"{time.strftime('%Y%m%d_%H%M%S')}_{args.exp_name}"
-    result_dir = os.path.join(RESULT_DIR, run_name)
-    os.makedirs(result_dir, exist_ok=True)
+    result_dir = Path("results") / run_name
+    result_dir.mkdir(parents=True, exist_ok=True)
+    write_git_info(result_dir / "git_info.txt")
 
     batch = config.num_actors * config.steps_num
     print(
@@ -57,10 +73,10 @@ def main():
         ENV_PATH, arena_paths, config.num_actors, BASE_PORT, args.seed, shape_rewards=True
     )
     run = wandb.init(
-        project=WANDB_PROJECT,
+        project="rl-animal-torch",
         name=run_name,
         mode=args.wandb_mode,
-        dir=result_dir,
+        dir=str(result_dir),
         config=dict(vars(config), arenas=ARENAS, seed=args.seed),
     )
     trainer = PPOTrainer(vec_env, config, torch.device("cuda"), run)
@@ -68,9 +84,9 @@ def main():
         trainer.restore(args.restore)
         print(f"restored {args.restore} at epoch {trainer.epoch}")
 
-    best_checkpoint = os.path.join(result_dir, "best.pt")
+    best_checkpoint = result_dir / "best.pt"
     try:
-        trainer.train(os.path.join(result_dir, "last.pt"), best_checkpoint)
+        trainer.train(result_dir / "last.pt", best_checkpoint)
     finally:
         vec_env.close()
         run.finish()
