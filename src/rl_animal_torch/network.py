@@ -2,9 +2,13 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-VISUAL_SIZE = 84
-VISUAL_CHANNELS = 6
-VELS_SIZE = 8
+from rl_animal_torch.config import EnvConfig
+
+_ENV = EnvConfig()
+VISUAL_SIZE = _ENV.resolution
+# derived rather than written out so they cannot drift from what the wrappers produce
+VISUAL_CHANNELS = 3 * _ENV.visual_frames
+VELS_SIZE = 4 * _ENV.velocity_frames
 ACTIONS_NUM = 9
 DEPTHS = (16, 32, 64, 128)
 HIDDEN_NODES = 1024

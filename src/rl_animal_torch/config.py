@@ -35,8 +35,8 @@ class EnvConfig:
     target_frame_rate: int = -1
     # the network was trained on the velocity divided by this
     velocity_scale: tuple = (1.0, 1.0, 16.0)
-    visual_frames: int = 2
-    velocity_frames: int = 2
+    visual_frames: int = 1
+    velocity_frames: int = 1
     time_unit: float = 250.0
     physics_steps_per_t: int = 5
     reward_bonus: float = 0.5
