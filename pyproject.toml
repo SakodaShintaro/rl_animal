@@ -11,6 +11,11 @@ dependencies = [
     "dnfile",
     "mlagents-envs==1.0.0",
     "numpy",
+    # the live view of the camera when a run has a single environment
+    "opencv-python",
+    "pre-commit>=4.6.0",
+    "pytest",
+    "ruff",
     "torch>=2.7",
     # The Animal-AI v4 stack forces protobuf 3.20.3 (see the override below). wandb ships
     # protobuf code generated per major version and dropped the 3.x generation after
@@ -23,9 +28,6 @@ dependencies = [
 train = "rl_animal_torch.train:main"
 evaluate = "rl_animal_torch.evaluate:main"
 patch_env_logging = "rl_animal_torch.patch_env_logging:main"
-
-[project.optional-dependencies]
-dev = ["pre-commit>=4.6.0", "pytest", "ruff"]
 
 [build-system]
 requires = ["hatchling"]

@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+from rl_animal_torch import display
 from rl_animal_torch.network import AnimalAgent
 
 
@@ -69,6 +70,8 @@ class PPOTrainer:
         self.episode_rewards = deque([], maxlen=1000)
         self.frame = 0
         self.epoch = 0
+        # one environment means a human is watching rather than a cluster running
+        self.show = True
 
     def to_device(self, visual, vels):
         return (
@@ -108,7 +111,8 @@ class PPOTrainer:
             steps["states"].append(self.state.cpu().numpy())
             actions, values, neglogpacs = self.act(visual, vels)
 
-            steps["visual"].append(visual.cpu().numpy())
+            frames = visual.cpu().numpy()
+            steps["visual"].append(frames)
             steps["vels"].append(vels.cpu().numpy())
             steps["actions"].append(actions.cpu().numpy())
             steps["values"].append(values.cpu().numpy())
@@ -117,6 +121,10 @@ class PPOTrainer:
 
             (next_visual, next_vels), rewards, dones = self.vec_env.step(actions.cpu().numpy())
             steps["rewards"].append(rewards)
+            if self.show:
+                display.show(
+                    frames[0], f"epoch {self.epoch} action {actions[0]} reward {rewards[0]:+.3f}"
+                )
 
             self.current_rewards += rewards
             for reward, done in zip(self.current_rewards, dones):
@@ -311,6 +319,9 @@ class PPOTrainer:
             self.logger.log(values, step=self.frame)
 
             self.save(checkpoint_path)
+
+        if self.show:
+            display.close()
 
     def save(self, path):
         torch.save(
