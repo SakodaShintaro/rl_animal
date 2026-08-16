@@ -1,5 +1,4 @@
 import random
-from collections import deque
 
 import numpy as np
 from animalai.environment import AnimalAIEnvironment
@@ -7,57 +6,9 @@ from mlagents_envs.base_env import ActionTuple
 
 from rl_animal_torch import arena
 from rl_animal_torch.config import EnvConfig
+from rl_animal_torch.preprocess import Stacker, shape_reward
 
 ACTIONS_NUM = 9
-
-
-class Stacker:
-    """
-    The frame and velocity stacking of animalai_wrapper.AnimalStack. SKIP_FRAMES was 1, so
-    there is no action repeat to reproduce.
-    """
-
-    def __init__(self, config):
-        self.config = config
-        self.frames = deque([], maxlen=config.visual_frames)
-        self.vels = deque([], maxlen=config.velocity_frames)
-        self.time = 0.0
-        self.velocity_scale = np.asarray(config.velocity_scale, dtype=np.float32)
-        self.time_decrement = config.decision_period / (
-            config.physics_steps_per_t * config.time_unit
-        )
-
-    @staticmethod
-    def to_raw_velocity(vector):
-        # v4's vector observation is [health, vx, vy, vz, px, py, pz]
-        return np.asarray(vector[1:4], dtype=np.float32)
-
-    def to_frame(self, camera):
-        # v4 sends CHW float in [0, 1]; the network takes uint8 HWC
-        return np.asarray(np.transpose(camera, (1, 2, 0)) * 255.0, dtype=np.uint8)
-
-    def reset(self, camera, vector, arena_time):
-        self.time = arena_time / self.config.time_unit
-        frame = self.to_frame(camera)
-        self.frames.clear()
-        self.vels.clear()
-        for _ in range(self.config.visual_frames):
-            self.frames.append(frame)
-        for _ in range(self.config.velocity_frames - 1):
-            self.vels.append(np.array([0.0, 0.0, 0.0, self.time], dtype=np.float32))
-        self.vels.append(self.velocity_entry(vector))
-
-    def step(self, camera, vector):
-        self.time -= self.time_decrement
-        self.frames.append(self.to_frame(camera))
-        self.vels.append(self.velocity_entry(vector))
-
-    def velocity_entry(self, vector):
-        scaled = self.to_raw_velocity(vector) / self.velocity_scale
-        return np.append(scaled, self.time).astype(np.float32)
-
-    def observation(self):
-        return (np.concatenate(self.frames, axis=-1), np.concatenate(self.vels))
 
 
 class AnimalEnv:
@@ -66,11 +17,10 @@ class AnimalEnv:
     (visual uint8 HWC, velocity float32).
     """
 
-    def __init__(self, env_path, arena_paths, worker_id, base_port, seed, shape_rewards):
+    def __init__(self, env_path, arena_paths, worker_id, base_port, seed):
         config = EnvConfig()
         self.config = config
         self.arena_paths = arena_paths
-        self.shape_rewards = shape_rewards
         self.random = random.Random(seed)
         self.stacker = Stacker(config)
         self.arena_time = arena.read_arena_time(open(arena_paths[0]).read())
@@ -128,22 +78,16 @@ class AnimalEnv:
         self.env.step()
 
     def receive(self):
+        """
+        (observation, the arena's own reward, the reward to train on, done). Both rewards
+        come out so the caller reports the score the competition scores while the update
+        sees the shaped one, instead of the environment deciding which of the two exists.
+        """
         camera, vector, reward, done = self._observe()
         self.stacker.step(camera, vector)
-        if self.shape_rewards:
-            reward = self.shape(reward, self.stacker.to_raw_velocity(vector))
+        shaped = shape_reward(reward, self.stacker.to_raw_velocity(vector), self.config)
 
-        return self.stacker.observation(), reward, done
-
-    def shape(self, reward, velocity):
-        if reward > 0.1:
-            reward += self.config.reward_bonus
-        if velocity[1] > 0.01:
-            reward += velocity[1] * self.config.ramps_coef
-        if velocity[2] < 0:
-            reward += velocity[2] * self.config.back_move_coef
-
-        return reward
+        return self.stacker.observation(), reward, shaped, done
 
     def step(self, action):
         self.send(action)
@@ -153,7 +97,7 @@ class AnimalEnv:
         self.env.close()
 
 
-def observation_shapes(config=EnvConfig()):
+def observation_shapes(config):
     return (
         (config.resolution, config.resolution, 3 * config.visual_frames),
         (4 * config.velocity_frames,),

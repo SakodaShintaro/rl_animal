@@ -94,7 +94,7 @@ def write_csv(path, fields, rows):
 def evaluate(envs, agent, tasks, writer, device, log_every):
     config = EnvConfig()
     num_envs = len(envs)
-    state = agent.initial_state(num_envs, device=device)
+    state = agent.initial_state(num_envs, device)
     cursor = [0] * num_envs
     pass_mark = [0.0] * num_envs
     max_steps = [0] * num_envs
@@ -138,7 +138,8 @@ def evaluate(envs, agent, tasks, writer, device, log_every):
         for index in running:
             envs[index].send(int(actions[index]))
         for index in running:
-            observations[index], step_reward, done = envs[index].receive()
+            # scored on the arena's own reward, not the one training is shaped with
+            observations[index], step_reward, _, done = envs[index].receive()
             reward[index] += step_reward
             steps[index] += 1
             total_steps += 1
@@ -193,7 +194,6 @@ def run(checkpoint, configs, num_envs, base_port, seed, stride):
             index,
             base_port,
             seed + index,
-            shape_rewards=False,
         )
         for index in range(num_envs)
     ]

@@ -9,7 +9,9 @@ import wandb
 
 from rl_animal_torch import arena, evaluate
 from rl_animal_torch.config import ENV_PATH, TrainingConfig
-from rl_animal_torch.ppo import PPOTrainer
+from rl_animal_torch.network import AnimalAgent
+from rl_animal_torch.ppo import PPO
+from rl_animal_torch.runner import Runner
 from rl_animal_torch.vec_env import VecEnv
 
 # every arena file under these roots is drawn from, so a curriculum stage such as
@@ -74,9 +76,7 @@ def main():
         f"{batch * config.max_epochs} steps total"
     )
 
-    vec_env = VecEnv(
-        ENV_PATH, arena_paths, config.num_actors, BASE_PORT, args.seed, shape_rewards=True
-    )
+    vec_env = VecEnv(ENV_PATH, arena_paths, config.num_actors, BASE_PORT, args.seed)
     run = wandb.init(
         project="rl-animal-torch",
         name=run_name,
@@ -84,14 +84,16 @@ def main():
         dir=str(result_dir),
         config=dict(vars(config), arenas=ARENAS, seed=args.seed),
     )
-    trainer = PPOTrainer(vec_env, config, torch.device("cuda"), run)
+    device = torch.device("cuda")
+    ppo = PPO(AnimalAgent().to(device), config, device)
+    runner = Runner(vec_env, ppo, config, run, show=True)
     if args.restore is not None:
-        trainer.restore(args.restore)
-        print(f"restored {args.restore} at epoch {trainer.epoch}")
+        runner.restore(args.restore)
+        print(f"restored {args.restore} at epoch {runner.epoch}")
 
     best_checkpoint = result_dir / "best.pt"
     try:
-        trainer.train(result_dir / "last.pt", best_checkpoint)
+        runner.train(result_dir / "last.pt", best_checkpoint)
     finally:
         vec_env.close()
         run.finish()

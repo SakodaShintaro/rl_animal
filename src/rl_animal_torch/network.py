@@ -145,8 +145,8 @@ class AnimalAgent(nn.Module):
         self.value_head = nn.Linear(LSTM_UNITS, 1)
         self.logits_head = nn.Linear(LSTM_UNITS, ACTIONS_NUM)
 
-    def initial_state(self, env_num, dtype=torch.float32, device=None):
-        return torch.zeros(env_num, 2 * LSTM_UNITS, dtype=dtype, device=device)
+    def initial_state(self, env_num, device):
+        return torch.zeros(env_num, 2 * LSTM_UNITS, device=device)
 
     def features(self, visual):
         """

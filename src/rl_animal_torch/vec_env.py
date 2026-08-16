@@ -5,17 +5,17 @@ import numpy as np
 from rl_animal_torch.env import AnimalEnv
 
 
-def worker_main(connection, env_path, arena_paths, worker_id, base_port, seed, shape_rewards):
-    env = AnimalEnv(env_path, arena_paths, worker_id, base_port, seed, shape_rewards)
+def worker_main(connection, env_path, arena_paths, worker_id, base_port, seed):
+    env = AnimalEnv(env_path, arena_paths, worker_id, base_port, seed)
     try:
         connection.send(env.reset())
         while True:
             command, payload = connection.recv()
             if command == "step":
-                observation, reward, done = env.step(payload)
+                observation, reward, shaped, done = env.step(payload)
                 if done:
                     observation = env.reset()
-                connection.send((observation, reward, done))
+                connection.send((observation, reward, shaped, done))
             elif command == "reset":
                 connection.send(env.reset())
             elif command == "close":
@@ -26,7 +26,7 @@ def worker_main(connection, env_path, arena_paths, worker_id, base_port, seed, s
 
 
 class VecEnv:
-    def __init__(self, env_path, arena_paths, num_actors, base_port, seed, shape_rewards):
+    def __init__(self, env_path, arena_paths, num_actors, base_port, seed):
         """
         spawn rather than fork: the parent holds CUDA context and file descriptors that a
         forked child must not inherit.
@@ -39,7 +39,7 @@ class VecEnv:
             parent, child = context.Pipe()
             process = context.Process(
                 target=worker_main,
-                args=(child, env_path, arena_paths, index, base_port, seed + index, shape_rewards),
+                args=(child, env_path, arena_paths, index, base_port, seed + index),
                 daemon=True,
             )
             process.start()
@@ -61,13 +61,17 @@ class VecEnv:
         return self.observations()
 
     def step(self, actions):
+        """
+        (observations, the arenas' own rewards, the rewards to train on, dones).
+        """
         for connection, action in zip(self.connections, actions):
             connection.send(("step", int(action)))
         results = [connection.recv() for connection in self.connections]
-        self.last = [observation for observation, _, _ in results]
-        rewards = np.asarray([reward for _, reward, _ in results], dtype=np.float32)
-        dones = np.asarray([done for _, _, done in results], dtype=bool)
-        return self.observations(), rewards, dones
+        self.last = [observation for observation, _, _, _ in results]
+        rewards = np.asarray([entry[1] for entry in results], dtype=np.float32)
+        shaped = np.asarray([entry[2] for entry in results], dtype=np.float32)
+        dones = np.asarray([entry[3] for entry in results], dtype=bool)
+        return self.observations(), rewards, shaped, dones
 
     def close(self):
         for connection in self.connections:
