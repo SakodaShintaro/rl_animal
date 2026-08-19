@@ -45,14 +45,19 @@ uv run evaluate results/20260812_213000_exp_name/ckpt/model_best.pt
 
 ```
 results/<run>/
-  config.json     every resolved setting (tracked)
-  git_info.txt    the commit and diff it ran from (tracked)
-  train_log.csv   one row per epoch (tracked)
-  eval/curve.csv  pass rate against frames (tracked)
-  eval/<checkpoint>/{detail.csv,summary.csv}   900 arenas, one row each (tracked)
-  ckpt/model_<frame>.pt   weights only, 38 MB (not tracked)
-  ckpt/trainer_last.pt    weights and optimizer, for --restore (not tracked)
+  config.json     every resolved setting
+  git_info.txt    the commit and diff it ran from
+  train_log.csv   one row per epoch
+  eval/curve.csv  pass rate against frames
+  eval/<checkpoint>/{detail.csv,summary.csv}   900 arenas, one row each
+  ckpt/model_<frame>.pt   weights only, 38 MB
+  ckpt/trainer_last.pt    weights and optimizer, for --restore
 ```
+
+`results/` is ignored here: this repository holds code, not runs. The text files above are
+copied into the paper repository, which is where a result is version-controlled next to
+the sentence citing it, by `scripts/import_results.py` there. The weights stay local --
+`model_<frame>.pt` is 38 MB and `trainer_last.pt` is 114 MB, over GitHub's per-file limit.
 
 ## Test
 

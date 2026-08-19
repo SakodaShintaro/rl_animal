@@ -283,19 +283,18 @@ class PPOTrainer:
         """Run to `max_epochs`, writing everything a result directory holds.
 
         `result_dir/train_log.csv` gets one row per epoch, so the learning curve survives
-        without wandb. `result_dir/ckpt` gets a model-only file at each of the config's
-        `checkpoint_frames` (what `evaluate.sweep` scores), a model-only `model_best.pt`
-        at every improvement of the training mean reward, and `trainer_last.pt`, the only
-        file carrying the optimizer, for `--restore`.
+        without wandb. `result_dir/ckpt` gets a model-only file every tenth of the run
+        (what `evaluate.sweep` scores), a model-only `model_best.pt` at every improvement
+        of the training mean reward, and `trainer_last.pt`, the only file carrying the
+        optimizer, for `--restore`.
         """
         config = self.config
         result_dir = Path(result_dir)
         checkpoint_dir = result_dir / "ckpt"
         checkpoint_dir.mkdir(parents=True, exist_ok=True)
         trainer_path = checkpoint_dir / "trainer_last.pt"
-        # a resumed run picks up the checkpoints it has not reached yet, and appends to
-        # the log rather than truncating what the earlier session wrote
-        pending_frames = [frame for frame in config.checkpoint_frames if frame > self.frame]
+        checkpoint_every = max(1, config.max_epochs // config.checkpoint_divisions)
+        # a resumed run appends to the log rather than truncating what the earlier one wrote
         log_path = result_dir / "train_log.csv"
         log_exists = log_path.exists()
         # line buffered, so an interrupted run keeps every row it has already printed
@@ -365,13 +364,7 @@ class PPOTrainer:
                     self.save_model(checkpoint_dir / "model_best.pt")
                     report += " (best, saved)"
 
-            # a batch can be large enough to cross more than one of them at once, and
-            # what gets written is the one file the crossing frame names
-            crossed = False
-            while len(pending_frames) > 0 and self.frame >= pending_frames[0]:
-                pending_frames.pop(0)
-                crossed = True
-            if crossed:
+            if self.epoch % checkpoint_every == 0:
                 self.save_model(checkpoint_dir / f"model_{self.frame:09d}.pt")
                 report += " (checkpoint)"
 

@@ -21,21 +21,10 @@ class TrainingConfig:
     mini_epochs: int = 4
     seq_len: int = 8
     max_epochs: int = 2500
-    # Frames at which a model-only checkpoint is written, so the evaluation sweep can draw
-    # a steps-vs-pass-rate curve instead of scoring one end point. The single-environment
-    # runs this is the reference for are compared at 2,000,000 frames, so that value has to
-    # be one of these. The last one is `num_actors * steps_num * max_epochs`, i.e. the end
-    # of the run. A frame count is only crossed, never hit exactly -- the counter advances
-    # by a whole batch per epoch -- so the file is named after the frame it was written at.
-    checkpoint_frames: tuple = (
-        250_000,
-        500_000,
-        1_000_000,
-        2_000_000,
-        4_000_000,
-        8_000_000,
-        15_360_000,
-    )
+    # A model-only checkpoint every tenth of the run, so the evaluation sweep can draw a
+    # steps-vs-pass-rate curve instead of scoring one end point. Each is named after the
+    # frame it was written at.
+    checkpoint_divisions: int = 10
     # How often the resume checkpoint (model and optimizer, ~114 MB) is rewritten. Writing
     # it every epoch was 2500 rewrites of that file over a run.
     trainer_save_interval_epochs: int = 25

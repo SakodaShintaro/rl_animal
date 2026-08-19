@@ -122,22 +122,22 @@ def test_train_logs_every_epoch_and_appends_when_resumed(tmp_path):
     assert [int(row["epoch"]) for row in rows] == list(range(1, 2 * LIGHT.max_epochs + 1))
 
 
-def test_checkpoints_are_written_at_the_configured_frames(tmp_path):
-    """One model-only file per frame count crossed, named after the frame it was hit at,
-    and none of them carrying optimizer state."""
+def test_checkpoints_are_written_every_division_of_the_run(tmp_path):
+    """One model-only file per tenth (here: half) of the run, named after the frame it was
+    written at, and none of them carrying optimizer state."""
     batch = LIGHT.num_actors * LIGHT.steps_num
-    config = replace(LIGHT, max_epochs=4, checkpoint_frames=(batch, 3 * batch))
+    config = replace(LIGHT, max_epochs=4, checkpoint_divisions=2)
     trainer = make_trainer(config)
     trainer.train(tmp_path)
 
     written = sorted(path.name for path in (tmp_path / "ckpt").glob("model_*.pt"))
     assert written == sorted(
-        ["model_best.pt", f"model_{batch:09d}.pt", f"model_{3 * batch:09d}.pt"]
+        ["model_best.pt", f"model_{2 * batch:09d}.pt", f"model_{4 * batch:09d}.pt"]
     )
 
-    state = torch.load(tmp_path / "ckpt" / f"model_{3 * batch:09d}.pt", weights_only=False)
+    state = torch.load(tmp_path / "ckpt" / f"model_{4 * batch:09d}.pt", weights_only=False)
     assert "optimizer" not in state
-    assert state["frame"] == 3 * batch
+    assert state["frame"] == 4 * batch
 
 
 def test_format_duration():

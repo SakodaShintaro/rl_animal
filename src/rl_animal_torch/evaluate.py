@@ -10,7 +10,7 @@ import torch
 import torch.nn.functional as F
 
 from rl_animal_torch import arena
-from rl_animal_torch.config import ENV_PATH, EnvConfig
+from rl_animal_torch.config import ENV_PATH
 from rl_animal_torch.env import AnimalEnv
 from rl_animal_torch.network import AnimalAgent
 
@@ -99,12 +99,10 @@ def write_csv(path, fields, rows):
 
 @torch.no_grad()
 def evaluate(envs, agent, tasks, writer, device, log_every):
-    config = EnvConfig()
     num_envs = len(envs)
     state = agent.initial_state(num_envs, device=device)
     cursor = [0] * num_envs
     pass_mark = [0.0] * num_envs
-    max_steps = [0] * num_envs
     reward = [0.0] * num_envs
     steps = [0] * num_envs
     active = [False] * num_envs
@@ -118,9 +116,6 @@ def evaluate(envs, agent, tasks, writer, device, log_every):
         path = tasks[index][cursor[index]]
         raw = open(path).read()
         pass_mark[index] = arena.read_pass_mark(raw)
-        max_steps[index] = (
-            arena.read_arena_time(raw) * config.physics_steps_per_t // config.decision_period + 100
-        )
         reward[index] = 0.0
         steps[index] = 0
         active[index] = True
@@ -149,7 +144,11 @@ def evaluate(envs, agent, tasks, writer, device, log_every):
             reward[index] += step_reward
             steps[index] += 1
             total_steps += 1
-            if not done and steps[index] < max_steps[index]:
+            # No step cap: the arena's `t` is the decay rate of the agent's health, not a
+            # step limit, and the player ends the episode when that health runs out. An
+            # episode that outlives `t` is one where the agent kept collecting rewards,
+            # which refill it. Training never capped either, here or in vla_streaming_rl.
+            if not done:
                 continue
 
             path = tasks[index][cursor[index]]
