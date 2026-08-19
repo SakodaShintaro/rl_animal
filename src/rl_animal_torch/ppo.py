@@ -1,5 +1,7 @@
+import csv
 import time
 from collections import deque
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -7,6 +9,18 @@ import torch.nn.functional as F
 
 from rl_animal_torch import display
 from rl_animal_torch.network import AnimalAgent
+
+LOG_FIELDS = [
+    "epoch",
+    "frame",
+    "mean_reward",
+    "actor",
+    "critic",
+    "entropy",
+    "kl",
+    "steps_per_second",
+    "elapsed_hours",
+]
 
 
 def format_duration(seconds):
@@ -71,7 +85,7 @@ class PPOTrainer:
         self.frame = 0
         self.epoch = 0
         # one environment means a human is watching rather than a cluster running
-        self.show = True
+        self.show = False
 
     def to_device(self, visual, vels):
         return (
@@ -265,8 +279,31 @@ class PPOTrainer:
             "kl": kl.item(),
         }
 
-    def train(self, checkpoint_path, best_checkpoint_path):
+    def train(self, result_dir):
+        """Run to `max_epochs`, writing everything a result directory holds.
+
+        `result_dir/train_log.csv` gets one row per epoch, so the learning curve survives
+        without wandb. `result_dir/ckpt` gets a model-only file at each of the config's
+        `checkpoint_frames` (what `evaluate.sweep` scores), a model-only `model_best.pt`
+        at every improvement of the training mean reward, and `trainer_last.pt`, the only
+        file carrying the optimizer, for `--restore`.
+        """
         config = self.config
+        result_dir = Path(result_dir)
+        checkpoint_dir = result_dir / "ckpt"
+        checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        trainer_path = checkpoint_dir / "trainer_last.pt"
+        # a resumed run picks up the checkpoints it has not reached yet, and appends to
+        # the log rather than truncating what the earlier session wrote
+        pending_frames = [frame for frame in config.checkpoint_frames if frame > self.frame]
+        log_path = result_dir / "train_log.csv"
+        log_exists = log_path.exists()
+        # line buffered, so an interrupted run keeps every row it has already printed
+        log_file = open(log_path, "a", buffering=1, newline="")
+        log_writer = csv.DictWriter(log_file, fieldnames=LOG_FIELDS)
+        if not log_exists:
+            log_writer.writeheader()
+
         best_reward = -float("inf")
         self.vec_env.reset()
         started = time.time()
@@ -299,6 +336,17 @@ class PPOTrainer:
             for name, value in losses.items():
                 values["losses/" + name] = value
 
+            row = {
+                "epoch": self.epoch,
+                "frame": self.frame,
+                # empty until an episode has ended in the window the deque holds
+                "mean_reward": "",
+                "steps_per_second": round(steps_per_second, 3),
+                "elapsed_hours": round(elapsed / 3600.0, 5),
+            }
+            for name, value in losses.items():
+                row[name] = round(value, 6)
+
             report = (
                 f"epoch {self.epoch}/{config.max_epochs}  frame {self.frame}  "
                 f"{steps_per_second:.0f} steps/s  "
@@ -310,20 +358,43 @@ class PPOTrainer:
             if len(self.episode_rewards) > 0:
                 mean_reward = float(np.mean(self.episode_rewards))
                 values["mean_reward"] = mean_reward
+                row["mean_reward"] = round(mean_reward, 6)
                 report += f"  mean reward {mean_reward:.4f}"
                 if mean_reward > best_reward:
                     best_reward = mean_reward
-                    self.save(best_checkpoint_path)
+                    self.save_model(checkpoint_dir / "model_best.pt")
                     report += " (best, saved)"
+
+            # a batch can be large enough to cross more than one of them at once, and
+            # what gets written is the one file the crossing frame names
+            crossed = False
+            while len(pending_frames) > 0 and self.frame >= pending_frames[0]:
+                pending_frames.pop(0)
+                crossed = True
+            if crossed:
+                self.save_model(checkpoint_dir / f"model_{self.frame:09d}.pt")
+                report += " (checkpoint)"
+
             print(report, flush=True)
             self.logger.log(values, step=self.frame)
+            log_writer.writerow(row)
 
-            self.save(checkpoint_path)
+            if self.epoch % config.trainer_save_interval_epochs == 0:
+                self.save_trainer(trainer_path)
+
+        self.save_trainer(trainer_path)
 
         if self.show:
             display.close()
 
-    def save(self, path):
+    def save_model(self, path):
+        """The weights alone: 38 MB against the 114 MB the optimizer state adds, which is
+        what makes a per-checkpoint history affordable to keep and to publish."""
+        torch.save(
+            {"model": self.agent.state_dict(), "epoch": self.epoch, "frame": self.frame}, path
+        )
+
+    def save_trainer(self, path):
         torch.save(
             {
                 "model": self.agent.state_dict(),

@@ -1,6 +1,8 @@
 import argparse
+import json
 import subprocess
 import time
+from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
@@ -8,7 +10,7 @@ import torch
 import wandb
 
 from rl_animal_torch import arena, evaluate
-from rl_animal_torch.config import ENV_PATH, TrainingConfig
+from rl_animal_torch.config import ENV_PATH, EnvConfig, TrainingConfig
 from rl_animal_torch.ppo import PPOTrainer
 from rl_animal_torch.vec_env import VecEnv
 
@@ -32,6 +34,29 @@ BASE_PORT = 5005
 
 def capture(*command):
     return subprocess.run(command, capture_output=True, text=True).stdout
+
+
+def write_config(path, config, env_config, arena_paths, seed):
+    """Every setting the run resolved to, as one machine-readable file.
+
+    `git_info.txt` records the code, but the hyperparameters are edited in place rather
+    than passed on the command line, so reading a past run back out of a diff is the only
+    thing that made the settings recoverable. This is what the result tables read instead.
+    """
+    path.write_text(
+        json.dumps(
+            {
+                "training": asdict(config),
+                "env": asdict(env_config),
+                "arena_roots": ARENAS,
+                "arena_count": len(arena_paths),
+                "seed": seed,
+                "total_frames": config.num_actors * config.steps_num * config.max_epochs,
+            },
+            indent=2,
+        )
+        + "\n"
+    )
 
 
 def write_git_info(path):
@@ -66,6 +91,7 @@ def main():
     result_dir = Path("results") / run_name
     result_dir.mkdir(parents=True, exist_ok=True)
     write_git_info(result_dir / "git_info.txt")
+    write_config(result_dir / "config.json", config, EnvConfig(), arena_paths, args.seed)
 
     batch = config.num_actors * config.steps_num
     print(
@@ -89,16 +115,15 @@ def main():
         trainer.restore(args.restore)
         print(f"restored {args.restore} at epoch {trainer.epoch}")
 
-    best_checkpoint = result_dir / "best.pt"
     try:
-        trainer.train(result_dir / "last.pt", best_checkpoint)
+        trainer.train(result_dir)
     finally:
         vec_env.close()
         run.finish()
 
     # the training instances are down by now, so the evaluation can take the machine
-    evaluate.run(
-        best_checkpoint, evaluate.CONFIGS, evaluate.NUM_ENVS, evaluate.BASE_PORT, args.seed, 1
+    evaluate.sweep(
+        result_dir, evaluate.CONFIGS, evaluate.NUM_ENVS, evaluate.BASE_PORT, args.seed, 1
     )
 
 

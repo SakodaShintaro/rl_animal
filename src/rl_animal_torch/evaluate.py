@@ -1,5 +1,6 @@
 import argparse
 import csv
+import re
 import sys
 import time
 from pathlib import Path
@@ -15,6 +16,8 @@ from rl_animal_torch.network import AnimalAgent
 
 CONFIGS = "external/animal-ai/configs/competition"
 NUM_ENVS = 12
+# what PPOTrainer.save_model names its frame-numbered checkpoints
+CHECKPOINT_PATTERN = re.compile(r"^model_(\d{9})$")
 # far enough above the ports the training instances take that both can be up at once
 BASE_PORT = 5900
 SEED = 32
@@ -22,7 +25,10 @@ SEED = 32
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("checkpoint")
+    parser.add_argument(
+        "target",
+        help="a model_<frame>.pt checkpoint, or a run directory to sweep every checkpoint of",
+    )
     parser.add_argument("--configs", default=CONFIGS, help="directory of scenario yaml files")
     parser.add_argument("--num_envs", default=NUM_ENVS, type=int)
     parser.add_argument("--base_port", default=BASE_PORT, type=int)
@@ -34,9 +40,10 @@ def parse_args():
 
 
 def load_agent(path, device):
-    agent = AnimalAgent()
     state = torch.load(path, map_location=device)
-    agent.load_state_dict(state["model"] if "model" in state else state)
+    assert "model" in state, f"{path} carries no weights under 'model'"
+    agent = AnimalAgent()
+    agent.load_state_dict(state["model"])
     return agent.to(device).eval()
 
 
@@ -175,15 +182,16 @@ def evaluate(envs, agent, tasks, writer, device, log_every):
     return rows
 
 
-def run(checkpoint, configs, num_envs, base_port, seed, stride):
+def run(checkpoint, configs, num_envs, base_port, seed, stride, output_dir):
     paths = arena.collect([configs])[::stride]
     print(f"scenarios: {len(paths)}, envs: {num_envs}")
 
     device = torch.device("cuda")
     agent = load_agent(checkpoint, device)
-    stem = f"{Path(checkpoint).resolve().with_suffix('')}_eval_{time.strftime('%Y%m%d_%H%M%S')}"
-    output = Path(f"{stem}.csv")
-    summary_output = Path(f"{stem}_summary.csv")
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output = output_dir / "detail.csv"
+    summary_output = output_dir / "summary.csv"
     print(f"loaded {checkpoint}, writing {output}")
 
     envs = [
@@ -222,9 +230,97 @@ def run(checkpoint, configs, num_envs, base_port, seed, stride):
     return summary
 
 
+def eval_dir_for(checkpoint):
+    """`<run>/ckpt/model_000253952.pt` scores into `<run>/eval/model_000253952/`."""
+    checkpoint = Path(checkpoint).resolve()
+    return checkpoint.parent.parent / "eval" / checkpoint.stem
+
+
+def write_curve(eval_dir):
+    """Collect the frame-numbered evaluations into one steps-vs-pass-rate table.
+
+    This is the file the paper's figures read: one row per checkpoint, the overall pass
+    rate and the ten per-category ones. `model_best` is left out of it -- it is not a
+    point on a training curve, since which epoch it came from moves with the run.
+    """
+    eval_dir = Path(eval_dir)
+    rows = []
+    for directory in sorted(eval_dir.iterdir()):
+        match = CHECKPOINT_PATTERN.match(directory.name)
+        summary_path = directory / "summary.csv"
+        if match is None or not summary_path.exists():
+            continue
+
+        by_category = {entry["category"]: entry for entry in csv.DictReader(open(summary_path))}
+        total = by_category.pop("total")
+        row = {
+            "frame": int(match.group(1)),
+            "episodes": int(total["episodes"]),
+            "passed": int(total["passed"]),
+            "pass_rate": float(total["pass_rate"]),
+            "mean_reward": float(total["mean_reward"]),
+        }
+        for category in sorted(by_category):
+            row[f"pass_rate_{category}"] = float(by_category[category]["pass_rate"])
+        rows.append(row)
+
+    assert len(rows) > 0, f"no evaluated checkpoints under {eval_dir}"
+    fields = list(rows[0].keys())
+    for row in rows:
+        assert list(row.keys()) == fields, f"{row['frame']} has categories the others do not"
+
+    curve_path = eval_dir / "curve.csv"
+    write_csv(curve_path, fields, rows)
+    print(f"wrote {curve_path}")
+    for row in rows:
+        print(f"frame {row['frame']:>9}  pass rate {row['pass_rate']:.3f}")
+
+
+def sweep(result_dir, configs, num_envs, base_port, seed, stride):
+    """Score every frame-numbered checkpoint of a run, then write their curve.
+
+    Evaluation is 900 arenas per checkpoint, so it is left until training has finished and
+    the machine is free. A checkpoint whose summary is already on disk is skipped, which
+    is what makes an interrupted sweep resumable.
+    """
+    checkpoint_dir = Path(result_dir) / "ckpt"
+    assert checkpoint_dir.is_dir(), f"{checkpoint_dir} does not exist"
+
+    checkpoints = [
+        path for path in sorted(checkpoint_dir.iterdir()) if CHECKPOINT_PATTERN.match(path.stem)
+    ]
+    assert len(checkpoints) > 0, f"no model_<frame>.pt under {checkpoint_dir}"
+    # scored like the rest, but kept out of the curve: see write_curve
+    best = checkpoint_dir / "model_best.pt"
+    if best.exists():
+        checkpoints.append(best)
+    print(f"sweeping {len(checkpoints)} checkpoints under {checkpoint_dir}")
+
+    for checkpoint in checkpoints:
+        output_dir = eval_dir_for(checkpoint)
+        if (output_dir / "summary.csv").exists():
+            print(f"skipping {checkpoint.name}: {output_dir} already scored")
+            continue
+        run(checkpoint, configs, num_envs, base_port, seed, stride, output_dir)
+
+    write_curve(Path(result_dir) / "eval")
+
+
 def main():
     args = parse_args()
-    run(args.checkpoint, args.configs, args.num_envs, args.base_port, args.seed, args.stride)
+    target = Path(args.target)
+    if target.is_dir():
+        sweep(target, args.configs, args.num_envs, args.base_port, args.seed, args.stride)
+    else:
+        run(
+            target,
+            args.configs,
+            args.num_envs,
+            args.base_port,
+            args.seed,
+            args.stride,
+            eval_dir_for(target),
+        )
 
 
 if __name__ == "__main__":

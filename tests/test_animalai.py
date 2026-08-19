@@ -66,14 +66,14 @@ def test_light_training(env_path, tmp_path):
     try:
         trainer = PPOTrainer(vec_env, config, torch.device("cpu"), SilentLogger())
         before = torch.cat([p.detach().reshape(-1).clone() for p in trainer.agent.parameters()])
-        trainer.train(str(tmp_path / "last.pt"), str(tmp_path / "best.pt"))
+        trainer.train(tmp_path)
         after = torch.cat([p.detach().reshape(-1).clone() for p in trainer.agent.parameters()])
     finally:
         vec_env.close()
 
     assert trainer.epoch == config.max_epochs
     assert torch.max(torch.abs(after - before)).item() > 0
-    assert os.path.exists(str(tmp_path / "last.pt"))
+    assert os.path.exists(str(tmp_path / "ckpt" / "trainer_last.pt"))
 
 
 def test_light_evaluation(env_path, tmp_path):

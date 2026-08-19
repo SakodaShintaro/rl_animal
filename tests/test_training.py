@@ -1,5 +1,8 @@
 """A light training run against a stand-in environment."""
 
+import csv
+from dataclasses import replace
+
 import numpy as np
 import torch
 
@@ -87,18 +90,54 @@ def test_update_moves_the_weights_and_reports_finite_losses():
 
 def test_train_runs_and_round_trips_a_checkpoint(tmp_path):
     trainer = make_trainer()
-    last = str(tmp_path / "last.pt")
-    best = str(tmp_path / "best.pt")
-    trainer.train(last, best)
+    trainer.train(tmp_path)
 
     assert trainer.epoch == LIGHT.max_epochs
     assert trainer.frame == LIGHT.max_epochs * LIGHT.num_actors * LIGHT.steps_num
 
-    restored = make_trainer().restore(last)
+    restored = make_trainer().restore(tmp_path / "ckpt" / "trainer_last.pt")
     assert restored.epoch == trainer.epoch
     assert restored.frame == trainer.frame
     for saved, loaded in zip(trainer.agent.parameters(), restored.agent.parameters()):
         assert torch.equal(saved.detach(), loaded.detach())
+
+
+def test_train_logs_every_epoch_and_appends_when_resumed(tmp_path):
+    trainer = make_trainer()
+    trainer.train(tmp_path)
+    rows = list(csv.DictReader(open(tmp_path / "train_log.csv")))
+
+    assert [int(row["epoch"]) for row in rows] == list(range(1, LIGHT.max_epochs + 1))
+    assert [int(row["frame"]) for row in rows] == [
+        epoch * LIGHT.num_actors * LIGHT.steps_num for epoch in range(1, LIGHT.max_epochs + 1)
+    ]
+    for row in rows:
+        assert np.isfinite(float(row["actor"]))
+
+    # a second session writes no second header and starts where the first stopped
+    resumed = make_trainer(replace(LIGHT, max_epochs=2 * LIGHT.max_epochs))
+    resumed.restore(tmp_path / "ckpt" / "trainer_last.pt")
+    resumed.train(tmp_path)
+    rows = list(csv.DictReader(open(tmp_path / "train_log.csv")))
+    assert [int(row["epoch"]) for row in rows] == list(range(1, 2 * LIGHT.max_epochs + 1))
+
+
+def test_checkpoints_are_written_at_the_configured_frames(tmp_path):
+    """One model-only file per frame count crossed, named after the frame it was hit at,
+    and none of them carrying optimizer state."""
+    batch = LIGHT.num_actors * LIGHT.steps_num
+    config = replace(LIGHT, max_epochs=4, checkpoint_frames=(batch, 3 * batch))
+    trainer = make_trainer(config)
+    trainer.train(tmp_path)
+
+    written = sorted(path.name for path in (tmp_path / "ckpt").glob("model_*.pt"))
+    assert written == sorted(
+        ["model_best.pt", f"model_{batch:09d}.pt", f"model_{3 * batch:09d}.pt"]
+    )
+
+    state = torch.load(tmp_path / "ckpt" / f"model_{3 * batch:09d}.pt", weights_only=False)
+    assert "optimizer" not in state
+    assert state["frame"] == 3 * batch
 
 
 def test_format_duration():
